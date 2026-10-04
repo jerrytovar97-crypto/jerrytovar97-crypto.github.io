@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- SEO / Open Graph -->
+  <title>Paddock Club ES · Portal de Fórmula 1</title>
+  <meta name="description" content="Portal F1 en vivo: clasificación de pilotos y equipos, horario del fin de semana y cuenta regresiva para la próxima carrera." />
+  <meta name="theme-color" content="#dc2626" />
+  <meta property="og:title" content="Paddock Club ES · Portal de Fórmula 1" />
+  <meta property="og:description" content="Clasificaciones, horarios y cuenta regresiva de F1 en tiempo real." />
+  <meta property="og:type" content="website" />
+  <!-- Favicon F1 (coche en emoji vía SVG inline) -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏎️</text></svg>" />
+
+  <!-- Tailwind CSS vía CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- PapaParse vía CDN para leer CSV desde Google Sheets -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+  <style>
+    /* Fuente y fondo base Dark Mode Premium F1 */
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: #000;
+      /* Degradado sutil negro/gris + acento rojo tenue de fondo */
+      background-image:
+        radial-gradient(circle at 15% 10%, rgba(220, 38, 38, 0.18), transparent 40%),
+        radial-gradient(circle at 85% 90%, rgba(220, 38, 38, 0.10), transparent 45%),
+        linear-gradient(160deg, #0a0a0a 0%, #141414 100%);
+      background-attachment: fixed;
+    }
+
+    /* Efecto Dark Glassmorphism reutilizable */
+    .glass {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+    }
+
+    /* Variante más oscura para contenedores grandes */
+    .glass-dark {
+      background: rgba(0, 0, 0, 0.40);
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
+    }
+
+    /* Scrollbar oscura */
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: #0a0a0a; }
+    ::-webkit-scrollbar-thumb { background: #dc2626; border-radius: 8px; }
+
+    /* Foco visible accesible */
+    a:focus-visible, button:focus-visible {
+      outline: 2px solid #dc2626;
+      outline-offset: 3px;
+      border-radius: 4px;
+    }
+
+    /* Pulso del segundero en el contador grande */
+    @keyframes tickPulse { 0% { transform: scale(1.12); } 100% { transform: scale(1); } }
+    .tick-pulse { animation: tickPulse 0.4s ease-out; }
+
+    /* Resalte animado de la próxima sesión */
+    @keyframes nextGlow {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.0); }
+      50%      { box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.25); }
+    }
+    .next-session { animation: nextGlow 2s ease-in-out infinite; }
+
+    /* Barra de color por escudería (se asigna por estilo inline) */
+    .team-bar { width: 4px; border-radius: 9999px; }
+
+    /* Puntito "EN VIVO" pulsante */
+    @keyframes livePulse { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
+    .live-dot { animation: livePulse 1s ease-in-out infinite; }
+
+    /* Transición suave al refrescar tablas */
+    .fade-in { animation: fadeIn 0.5s ease; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* Ticker inferior (marquesina) */
+    .ticker-wrap { overflow: hidden; white-space: nowrap; }
+    .ticker { display: inline-block; padding-left: 100%; animation: tickerMove 40s linear infinite; }
+    @keyframes tickerMove { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+    .ticker-wrap:hover .ticker { animation-play-state: paused; }
+
+    /* ===== MODO OVERLAY PARA OBS (?overlay=1) =====
+       Fondo transparente; oculta lo marcado con data-hide-overlay. */
+    body.overlay { background: transparent !important; }
+    body.overlay .glass, body.overlay .glass-dark { box-shadow: none; }
+    body.overlay [data-hide-overlay] { display: none !important; }
+    body.overlay main { padding-top: 1rem; }
+
+    /* Respeta usuarios que prefieren menos movimiento */
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .tick-pulse, .next-session, .live-dot, .ticker, .fade-in { animation: none; }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen text-white flex flex-col">
+
+  <!-- ===================== HEADER ===================== -->
+  <header data-hide-overlay class="w-full py-6 px-6 glass-dark border-b-2 border-red-600 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <!-- Marca + EN VIVO -->
+      <div class="flex items-center gap-4">
+        <span class="h-8 w-1.5 bg-red-600 rounded-full"></span>
+        <h1 class="text-2xl md:text-4xl font-black tracking-tight uppercase">
+          Paddock Club <span class="text-red-600">ES 🇪🇨</span>
+        </h1>
+        <span id="live-badge" class="hidden items-center gap-2 bg-red-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest">
+          <span class="live-dot h-2 w-2 bg-white rounded-full"></span> En vivo
+        </span>
+      </div>
+      <!-- Navegación + reloj -->
+      <div class="flex items-center gap-5">
+        <nav aria-label="Navegación principal" class="hidden sm:flex items-center gap-5 text-sm font-semibold uppercase tracking-widest text-gray-300">
+          <a href="#proxima-carrera" class="hover:text-red-600 transition-colors">Carrera</a>
+          <a href="#podios" class="hover:text-red-600 transition-colors">Podios</a>
+          <a href="#grilla" class="hover:text-red-600 transition-colors">Grilla</a>
+          <a href="#horario" class="hover:text-red-600 transition-colors">Horario</a>
+          <a href="#clasificaciones" class="hover:text-red-600 transition-colors">Clasificación</a>
+        </nav>
+        <span id="clock" class="text-sm font-bold tabular-nums text-gray-200 bg-black/40 px-3 py-1 rounded-lg border border-white/10"></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================== BANNER "AHORA EN PISTA" ===================== -->
+  <div id="track-banner" class="hidden w-full bg-red-600 text-white text-center py-2 px-4 font-bold uppercase tracking-widest text-sm sticky top-[88px] z-40">
+    🏁 Ahora en pista: <span id="track-banner-name"></span>
+  </div>
+
+  <!-- ===================== CONTENIDO ===================== -->
+  <main class="flex-1 w-full max-w-7xl mx-auto px-4 md:px-6 py-10 space-y-10">
+
+    <!-- ========== SECCIÓN CONTADOR PRÓXIMA CARRERA (PROTAGONISTA) ========== -->
+    <section id="proxima-carrera" data-overlay class="glass-dark rounded-3xl p-8 md:p-12 text-center scroll-mt-28">
+      <p class="text-red-600 font-bold uppercase tracking-[0.3em] text-sm mb-2">Próxima Carrera</p>
+      <h2 id="race-title" class="text-2xl md:text-4xl font-black uppercase mb-2">Gran Premio</h2>
+      <!-- Circuito / datos del GP (opcionales desde la hoja Horario) -->
+      <p id="race-circuit" class="text-gray-400 text-sm mb-8"></p>
+
+      <!-- Countdown grande (aria-live para lectores de pantalla) -->
+      <div class="flex justify-center gap-3 sm:gap-4 md:gap-8" role="timer" aria-live="off" aria-label="Cuenta regresiva para la próxima carrera">
+        <div class="flex flex-col items-center">
+          <span id="race-days" class="text-4xl sm:text-6xl md:text-8xl font-black text-white tabular-nums">00</span>
+          <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Días</span>
+        </div>
+        <span class="text-4xl sm:text-6xl md:text-8xl font-black text-red-600">:</span>
+        <div class="flex flex-col items-center">
+          <span id="race-hours" class="text-4xl sm:text-6xl md:text-8xl font-black text-white tabular-nums">00</span>
+          <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Horas</span>
+        </div>
+        <span class="text-4xl sm:text-6xl md:text-8xl font-black text-red-600">:</span>
+        <div class="flex flex-col items-center">
+          <span id="race-mins" class="text-4xl sm:text-6xl md:text-8xl font-black text-white tabular-nums">00</span>
+          <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Min</span>
+        </div>
+        <span class="text-4xl sm:text-6xl md:text-8xl font-black text-red-600">:</span>
+        <div class="flex flex-col items-center">
+          <span id="race-secs" class="text-4xl sm:text-6xl md:text-8xl font-black text-red-600 tabular-nums">00</span>
+          <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Seg</span>
+        </div>
+      </div>
+      <!-- Mensaje cuando la carrera está en curso / finalizada -->
+      <p id="race-status" class="mt-6 text-lg font-bold uppercase tracking-widest hidden"></p>
+    </section>
+
+    <!-- ========== PODIOS (ÚLTIMA CARRERA + HISTÓRICO) ========== -->
+    <section id="podios" data-overlay class="grid grid-cols-1 lg:grid-cols-2 gap-8 scroll-mt-28">
+      <!-- Podio última carrera -->
+      <div class="glass rounded-2xl p-6 md:p-8">
+        <h3 class="text-xl md:text-2xl font-bold uppercase mb-6 flex items-center gap-3 flex-wrap">
+          <span class="h-6 w-1 bg-red-600 rounded-full"></span>
+          Podio · Última Carrera
+          <span id="podio-gp" class="text-sm font-normal text-gray-400 normal-case"></span>
+        </h3>
+        <div id="podio-body" class="space-y-3">
+          <div class="py-6 text-center text-gray-500 animate-pulse">Cargando podio…</div>
+        </div>
+      </div>
+      <!-- Podio histórico del GP próximo -->
+      <div class="glass rounded-2xl p-6 md:p-8">
+        <h3 class="text-xl md:text-2xl font-bold uppercase mb-6 flex items-center gap-3 flex-wrap">
+          <span class="h-6 w-1 bg-red-600 rounded-full"></span>
+          Última Edición
+          <span id="podio-hist-gp" class="text-sm font-normal text-gray-400 normal-case"></span>
+        </h3>
+        <div id="podio-hist-body" class="space-y-3">
+          <div class="py-6 text-center text-gray-500 animate-pulse">Cargando histórico…</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== GRILLA DE PARTIDA (horizontal, zigzag) ========== -->
+    <section id="grilla" data-overlay class="glass rounded-2xl p-6 md:p-8 scroll-mt-28">
+      <h3 class="text-xl md:text-2xl font-bold uppercase mb-6 flex items-center gap-3 flex-wrap">
+        <span class="h-6 w-1 bg-red-600 rounded-full"></span>
+        Grilla de Partida
+        <span id="grid-gp" class="text-sm font-normal text-gray-400 normal-case"></span>
+      </h3>
+
+      <!-- Pista horizontal: la salida está a la izquierda y se avanza hacia la derecha.
+           Dos filas escalonadas simulan el zigzag de la grilla real. -->
+      <div class="relative overflow-x-auto pb-2">
+        <div class="flex items-stretch min-w-max">
+          <!-- Línea de salida (meta a cuadros, vertical) -->
+          <div class="w-3 rounded-l-lg mr-4 shrink-0"
+               style="background-image: repeating-linear-gradient(0deg,#fff 0 12px,#000 12px 24px); background-size: 12px 24px;"></div>
+          <!-- Las posiciones se generan dinámicamente (dos filas zigzag) -->
+          <div id="grid-body" class="grid grid-rows-2 grid-flow-col gap-x-3 gap-y-4">
+            <div class="row-span-2 py-6 px-4 text-center text-gray-500 animate-pulse">Cargando grilla…</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== SECCIÓN HORARIO DEL FIN DE SEMANA ========== -->
+    <section id="horario" data-overlay class="glass rounded-2xl p-6 md:p-8 scroll-mt-28">
+      <h3 class="text-xl md:text-2xl font-bold uppercase mb-6 flex items-center gap-3">
+        <span class="h-6 w-1 bg-red-600 rounded-full"></span>
+        Horario del Fin de Semana
+      </h3>
+
+      <!-- Las tarjetas de sesión se generan dinámicamente desde la hoja "Horario" -->
+      <div id="schedule-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div class="col-span-full py-6 text-center text-gray-500 animate-pulse">Cargando horario…</div>
+      </div>
+    </section>
+
+    <!-- ========== SECCIÓN DE TABLAS (CONEXIÓN A SHEETS) ========== -->
+    <section id="clasificaciones" data-overlay class="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start scroll-mt-28">
+
+      <!-- Tarjeta: Pilotos (más ancha: 3 de 5 columnas) -->
+      <div class="glass rounded-2xl p-6 md:p-8 lg:col-span-3">
+        <div class="flex items-center justify-between mb-6 flex-wrap gap-2">
+          <h3 class="text-xl md:text-2xl font-bold uppercase flex items-center gap-3">
+            <span class="h-6 w-1 bg-red-600 rounded-full"></span>
+            Clasificación de Pilotos
+          </h3>
+          <span id="drivers-updated" class="text-[11px] text-gray-500 uppercase tracking-widest"></span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="text-gray-400 text-xs uppercase tracking-widest border-b border-white/10">
+                <th scope="col" class="py-3 px-2 w-10">#</th>
+                <th scope="col" class="py-3 px-2">Piloto</th>
+                <th scope="col" class="py-3 px-2">Equipo</th>
+                <th scope="col" class="py-3 px-2 text-right">Pts</th>
+                <th scope="col" class="py-3 px-2 text-right">Gap</th>
+              </tr>
+            </thead>
+            <!-- Poblado dinámicamente por PapaParse -->
+            <tbody id="drivers-body">
+              <tr><td colspan="5" class="py-6 text-center text-gray-500 animate-pulse">Cargando datos…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tarjeta: Equipos (más estrecha: 2 de 5 columnas) -->
+      <div class="glass rounded-2xl p-6 md:p-8 lg:col-span-2">
+        <div class="flex items-center justify-between mb-6 flex-wrap gap-2">
+          <h3 class="text-xl md:text-2xl font-bold uppercase flex items-center gap-3">
+            <span class="h-6 w-1 bg-red-600 rounded-full"></span>
+            Equipos
+          </h3>
+          <span id="teams-updated" class="text-[11px] text-gray-500 uppercase tracking-widest"></span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="text-gray-400 text-xs uppercase tracking-widest border-b border-white/10">
+                <th scope="col" class="py-3 px-2 w-10">#</th>
+                <th scope="col" class="py-3 px-2">Equipo</th>
+                <th scope="col" class="py-3 px-2 text-right">Pts</th>
+              </tr>
+            </thead>
+            <!-- Poblado dinámicamente por PapaParse -->
+            <tbody id="teams-body">
+              <tr><td colspan="3" class="py-6 text-center text-gray-500 animate-pulse">Cargando datos…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========== PRÓXIMOS GRANDES PREMIOS (CALENDARIO) ========== -->
+    <section id="calendario" data-hide-overlay class="glass rounded-2xl p-6 md:p-8 scroll-mt-28">
+      <h3 class="text-xl md:text-2xl font-bold uppercase mb-6 flex items-center gap-3">
+        <span class="h-6 w-1 bg-red-600 rounded-full"></span>
+        Próximos Grandes Premios
+      </h3>
+      <div id="calendar-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="col-span-full py-6 text-center text-gray-500 animate-pulse">Cargando calendario…</div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===================== TICKER INFERIOR ===================== -->
+  <div id="ticker-wrap" data-hide-overlay class="ticker-wrap glass-dark border-t border-white/10 py-2 sticky bottom-0 z-40">
+    <div id="ticker" class="ticker text-sm font-semibold text-gray-200 uppercase tracking-wider"></div>
+  </div>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer data-hide-overlay class="w-full py-6 px-6 text-center border-t border-white/10">
+    <p class="text-gray-400 text-sm">Desarrollado por Paddock Club ES 2026.</p>
+  </footer>
+
+  <!-- ===================== SCRIPT ===================== -->
+  <script>
+    /* =========================================================
+       CONFIGURACIÓN
+       ========================================================= */
+    // URLs CSV publicadas de cada hoja (Archivo > Compartir > Publicar en la web > CSV)
+    const BASE = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTF1fuQ6Nz-6uIScfyp1sugkd1MQ5TaQZB3IOqKBA6tF7YksRidLrXaP2KwOFD5lxaFIhttQ_yXzFqQ/pub";
+    const csv  = (gid) => `${BASE}?gid=${gid}&single=true&output=csv`;
+
+    const DRIVERS_CSV_URL     = csv("0");          // Hoja Pilotos
+    const TEAMS_CSV_URL       = csv("836575149");  // Hoja Equipos
+    const SCHEDULE_CSV_URL    = csv("1418950549"); // Hoja Horario
+    const PODIUM_CSV_URL      = csv("2094224019"); // Hoja Podio
+    const PODIUM_HIST_CSV_URL = csv("624793501");  // Hoja PodioHistorico
+    const CALENDAR_CSV_URL    = csv("54267116");   // Hoja Calendario (opcional)
+    const GRID_CSV_URL        = csv("245017209");                // Hoja Grilla -> pega aquí su CSV
+
+    // Cada cuántos ms se vuelven a leer los Sheets (auto-refresh). 60000 = 1 min.
+    const REFRESH_MS = 60000;
+
+    // Zona horaria para mostrar fechas/horas (todas las fechas del Sheet se
+    // interpretan y muestran en esta zona, igual para toda la audiencia).
+    // Ejemplos: "America/Guayaquil", "Europe/Madrid", "America/Mexico_City".
+    const ZONA = "America/Guayaquil";
+    // Etiqueta corta visible junto a las horas (ej. "ECT", "hora Ecuador").
+    const ZONA_LABEL = "hora Ecuador";
+
+    // Flags por URL: ?overlay=1 (fondo transparente OBS), ?autoscroll=1
+    const params = new URLSearchParams(location.search);
+    if (params.get("overlay") === "1") document.body.classList.add("overlay");
+    const AUTOSCROLL = params.get("autoscroll") === "1";
+
+    /* =========================================================
+       COLORES POR ESCUDERÍA
+       Se detectan por coincidencia de texto en el nombre del equipo.
+       Añade o ajusta equipos aquí si cambian.
+       ========================================================= */
+    const COLORES_EQUIPO = [
+      { match: ["red bull"],              color: "#3671C6" },
+      { match: ["ferrari"],               color: "#E8002D" },
+      { match: ["mercedes"],              color: "#27F4D2" },
+      { match: ["mclaren", "mc laren"],   color: "#FF8000" },
+      { match: ["aston"],                 color: "#229971" },
+      { match: ["alpine"],                color: "#00A1E8" },
+      { match: ["williams"],              color: "#1868DB" },
+      { match: ["rb", "racing bulls", "visa", "tauri"], color: "#6692FF" },
+      { match: ["sauber", "kick", "stake"], color: "#52E252" },
+      { match: ["haas"],                  color: "#B6BABD" },
+    ];
+
+    // Devuelve el color de la escudería (o un gris neutro por defecto)
+    function colorEquipo(nombre) {
+      const n = (nombre || "").toLowerCase();
+      for (const e of COLORES_EQUIPO) {
+        if (e.match.some(m => n.includes(m))) return e.color;
+      }
+      return "#9ca3af"; // gris por defecto
+    }
+
+    // Escapa texto para evitar inyección de HTML desde el CSV
+    function esc(txt) {
+      return String(txt ?? "").replace(/[&<>"']/g, c => (
+        { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+      ));
+    }
+
+    // Marca de "última actualización". Si info.cache es true, indica que
+    // los datos provienen de la copia local (la descarga falló).
+    function sello(id, info) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const t = info && info.cache && info.t ? new Date(info.t) : new Date();
+      const h = new Intl.DateTimeFormat("es-ES", { hour: "2-digit", minute: "2-digit" }).format(t);
+      el.textContent = (info && info.cache ? "⚠ En caché · " : "Actualizado ") + h;
+      el.classList.toggle("text-amber-500", !!(info && info.cache));
+    }
+
+    // Reaplica la animación fade-in a un elemento (transición suave al refrescar)
+    function fade(el) {
+      if (!el) return;
+      el.classList.remove("fade-in"); void el.offsetWidth; el.classList.add("fade-in");
+    }
+
+    /* -------- Caché en localStorage --------
+       Guarda la última respuesta buena de cada hoja. Si una descarga
+       falla o viene vacía, se reutiliza la copia guardada para que
+       nunca se vea una tabla rota en vivo. */
+    const CACHE_PREFIX = "f1cache:";
+
+    function guardarCache(url, filas) {
+      try { localStorage.setItem(CACHE_PREFIX + url, JSON.stringify({ t: Date.now(), filas })); }
+      catch (e) { /* storage lleno o deshabilitado: se ignora */ }
+    }
+    function leerCache(url) {
+      try {
+        const raw = localStorage.getItem(CACHE_PREFIX + url);
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) { return null; }
+    }
+
+    // Helper genérico para leer un CSV con cabeceras (con respaldo en caché)
+    function parseCSV(url, onOk, onErr) {
+      const usarCache = () => {
+        const c = leerCache(url);
+        if (c && Array.isArray(c.filas) && c.filas.length) {
+          onOk(c.filas, { cache: true, t: c.t }); // datos de caché
+          return true;
+        }
+        return false;
+      };
+
+      Papa.parse(url, {
+        download: true, header: true, skipEmptyLines: true,
+        complete: (r) => {
+          const filas = r.data || [];
+          if (filas.length) {
+            guardarCache(url, filas);
+            onOk(filas, { cache: false });
+          } else if (!usarCache()) {
+            onOk(filas, { cache: false }); // vacío real, sin caché previa
+          }
+        },
+        error: () => { if (!usarCache() && onErr) onErr(); }
+      });
+    }
+
+    /* =========================================================
+       1) TABLAS: PILOTOS Y EQUIPOS
+       Pilotos: #, Nombre, Equipo, Puntos  (+ Gap calculado)
+       Equipos: #, Nombre, Puntos
+       ========================================================= */
+    function cargarTabla(url, tbodyId, conEquipo, selloId) {
+      const tbody = document.getElementById(tbodyId);
+      const cols  = conEquipo ? 5 : 3;
+
+      if (!url) {
+        tbody.innerHTML = `<tr><td colspan="${cols}" class="py-6 text-center text-gray-500">
+          Configura la URL del CSV en el script.</td></tr>`;
+        return;
+      }
+
+      parseCSV(url, function (filas, info) {
+          if (!filas.length) {
+            tbody.innerHTML = `<tr><td colspan="${cols}" class="py-6 text-center text-gray-500">Sin datos.</td></tr>`;
+            return;
+          }
+
+          // Puntos del líder (fila 1) para calcular el gap en Pilotos
+          const puntosLider = Number(
+            (filas[0].Puntos ?? filas[0].puntos ?? Object.values(filas[0])[conEquipo ? 3 : 2] ?? 0)
+          ) || 0;
+
+          tbody.innerHTML = filas.map((f, i) => {
+            const valores = Object.values(f);
+            const pos    = esc(f["#"]   ?? f.pos    ?? valores[0] ?? (i + 1));
+            const nombre = esc(f.Nombre ?? f.nombre ?? valores[1] ?? "—");
+            const esLider = i === 0;
+            // Resalte del líder del campeonato
+            const filaCls = esLider
+              ? "bg-red-600/10 border-b border-red-600/20"
+              : "border-b border-white/5 hover:bg-white/5";
+            const corona = esLider ? ' <span title="Líder del campeonato">👑</span>' : "";
+
+            if (conEquipo) {
+              const equipo = esc(f.Equipo ?? f.equipo ?? valores[2] ?? "—");
+              const puntos = Number(f.Puntos ?? f.puntos ?? valores[3] ?? 0) || 0;
+              const gap    = esLider ? "—" : "-" + (puntosLider - puntos);
+              const color  = colorEquipo(equipo);
+              return `
+                <tr class="${filaCls} transition-colors">
+                  <td class="py-3 px-2 font-bold ${esLider ? "text-red-500" : "text-red-600"}">${pos}</td>
+                  <td class="py-3 px-2 text-white font-medium">${nombre}${corona}</td>
+                  <td class="py-3 px-2">
+                    <span class="inline-flex items-center gap-2 text-gray-300">
+                      <span class="team-bar h-4" style="background:${color}"></span>${equipo}
+                    </span>
+                  </td>
+                  <td class="py-3 px-2 text-right font-semibold tabular-nums">${puntos}</td>
+                  <td class="py-3 px-2 text-right text-xs text-gray-400 tabular-nums">${gap}</td>
+                </tr>`;
+            }
+
+            // Tabla de Equipos
+            const puntos = Number(f.Puntos ?? f.puntos ?? valores[2] ?? 0) || 0;
+            const color  = colorEquipo(nombre);
+            return `
+              <tr class="${filaCls} transition-colors">
+                <td class="py-3 px-2 font-bold ${esLider ? "text-red-500" : "text-red-600"}">${pos}</td>
+                <td class="py-3 px-2">
+                  <span class="inline-flex items-center gap-2 text-white font-medium">
+                    <span class="team-bar h-4" style="background:${color}"></span>${nombre}${corona}
+                  </span>
+                </td>
+                <td class="py-3 px-2 text-right font-semibold tabular-nums">${puntos}</td>
+              </tr>`;
+          }).join("");
+
+          fade(tbody);
+          sello(selloId, info);
+        }, function () {
+          tbody.innerHTML = `<tr><td colspan="${cols}" class="py-8 text-center">
+            <span class="block text-2xl mb-1">⚠️</span>
+            <span class="text-red-500 font-semibold">No se pudieron cargar los datos.</span>
+            <span class="block text-gray-500 text-xs mt-1">Revisa que la hoja esté publicada en la web como CSV.</span>
+          </td></tr>`;
+      });
+    }
+
+    /* =========================================================
+       1b) PODIOS (hojas "Podio" y "PodioHistorico")
+       Columnas: pos | piloto | equipo   (opcional: gp)
+         - pos    : 1, 2, 3
+         - piloto : nombre del piloto
+         - equipo : escudería (para el color)
+         - gp     : (opcional) nombre del GP; se muestra junto al título.
+       ========================================================= */
+    const MEDALLAS = ["🥇", "🥈", "🥉"];
+
+    function cargarPodio(url, bodyId, gpLabelId) {
+      const body = document.getElementById(bodyId);
+      if (!url) {
+        body.innerHTML = `<div class="py-6 text-center text-gray-500">Configura la URL del CSV (hoja Podio).</div>`;
+        return;
+      }
+      parseCSV(url, (filas) => {
+        if (!filas.length) {
+          body.innerHTML = `<div class="py-6 text-center text-gray-500">Sin datos de podio.</div>`;
+          return;
+        }
+        // Etiqueta del GP (toma la primera que tenga valor)
+        const gp = (filas.find(f => f.gp || f.GP)?.gp) ?? (filas[0].GP ?? "");
+        const lbl = document.getElementById(gpLabelId);
+        if (lbl) lbl.textContent = gp ? "· " + gp : "";
+
+        body.innerHTML = filas.slice(0, 3).map((f, i) => {
+          const valores = Object.values(f);
+          const pos    = esc(f.pos ?? f.Pos ?? valores[0] ?? (i + 1));
+          const piloto = esc(f.piloto ?? f.Piloto ?? valores[1] ?? "—");
+          const equipo = esc(f.equipo ?? f.Equipo ?? valores[2] ?? "");
+          const color  = colorEquipo(equipo);
+          const resalte = i === 0 ? "bg-red-600/10 border-red-600/30" : "border-white/10";
+          return `
+            <div class="flex items-center gap-4 rounded-xl border ${resalte} bg-black/30 p-3">
+              <span class="text-2xl w-8 text-center">${MEDALLAS[i] || pos}</span>
+              <span class="team-bar h-10" style="background:${color}"></span>
+              <div class="flex-1 min-w-0">
+                <p class="text-white font-bold truncate">${piloto}</p>
+                <p class="text-gray-400 text-sm truncate">${equipo}</p>
+              </div>
+              <span class="text-gray-500 font-black text-xl">P${pos}</span>
+            </div>`;
+        }).join("");
+        fade(body);
+      }, () => {
+        body.innerHTML = `<div class="py-8 text-center">
+          <span class="block text-2xl mb-1">⚠️</span>
+          <span class="text-red-500 font-semibold">No se pudo cargar el podio.</span>
+          <span class="block text-gray-500 text-xs mt-1">Revisa que la hoja esté publicada como CSV.</span>
+        </div>`;
+      });
+    }
+
+    /* =========================================================
+       1c) GRILLA DE PARTIDA (hoja "Grilla")
+       Columnas: pos | piloto | equipo   (opcional: gp)
+       Se dibuja en zigzag: P1 columna izq, P2 der, P3 izq...
+       (como la grilla real de F1). La columna izquierda va
+       adelantada media casilla respecto a la derecha.
+       ========================================================= */
+    function cargarGrilla(url, bodyId, gpLabelId) {
+      const body = document.getElementById(bodyId);
+      if (!url) {
+        body.innerHTML = `<div class="row-span-2 py-6 px-4 text-center text-gray-500">Configura la URL del CSV (hoja Grilla).</div>`;
+        return;
+      }
+      parseCSV(url, (filas) => {
+        if (!filas.length) {
+          body.innerHTML = `<div class="row-span-2 py-6 px-4 text-center text-gray-500">Sin datos de grilla.</div>`;
+          return;
+        }
+        // Etiqueta del GP (opcional)
+        const gp = (filas.find(f => f.gp || f.GP)?.gp) ?? (filas[0].GP ?? "");
+        const lbl = document.getElementById(gpLabelId);
+        if (lbl) lbl.textContent = gp ? "· " + gp : "";
+
+        body.innerHTML = filas.map((f, i) => {
+          const v = Object.values(f);
+          const pos    = esc(f.pos ?? f.Pos ?? v[0] ?? (i + 1));
+          const piloto = esc(f.piloto ?? f.Piloto ?? v[1] ?? "—");
+          const equipo = esc(f.equipo ?? f.Equipo ?? v[2] ?? "");
+          const color  = colorEquipo(equipo);
+          // grid-rows-2 + grid-flow-col: pares arriba (P1,P3..), impares abajo (P2,P4..).
+          // La fila de abajo se adelanta un poco a la derecha para el efecto zigzag.
+          const filaAbajo = i % 2 === 1;
+          const zig = filaAbajo ? "translate-x-5 md:translate-x-7" : "";
+          const p1  = i === 0 ? "ring-2 ring-red-600" : "";
+          return `
+            <div class="w-48 transform ${zig}">
+              <div class="flex items-center gap-2 rounded-lg border border-white/10 bg-black/40 p-2.5 ${p1}">
+                <span class="font-black text-base w-9 text-center text-red-600 tabular-nums">P${pos}</span>
+                <span class="team-bar h-9" style="background:${color}"></span>
+                <div class="min-w-0">
+                  <p class="text-white font-bold text-sm truncate">${piloto}</p>
+                  <p class="text-gray-400 text-xs truncate">${equipo}</p>
+                </div>
+              </div>
+            </div>`;
+        }).join("");
+        fade(body);
+      }, () => {
+        body.innerHTML = `<div class="row-span-2 py-8 px-4 text-center">
+          <span class="block text-2xl mb-1">⚠️</span>
+          <span class="text-red-500 font-semibold">No se pudo cargar la grilla.</span>
+          <span class="block text-gray-500 text-xs mt-1">Revisa que la hoja esté publicada como CSV.</span>
+        </div>`;
+      });
+    }
+
+    /* =========================================================
+       2) HORARIO DEL FIN DE SEMANA (DINÁMICO DESDE SHEETS)
+       Hoja "Horario" (columnas): clave | sesion | fecha | pais | bandera | circuito
+         - clave : id corto; la fila "race" es la Carrera (contador grande).
+         - sesion: nombre visible de la sesión.
+         - fecha : "AAAA-MM-DD HH:MM" o rango "AAAA-MM-DD HH:MM - HH:MM".
+         - pais/bandera/circuito: opcionales, solo en la fila "race".
+       Si la URL falla, se usa este respaldo (fin de semana normal).
+       ========================================================= */
+    const SESIONES_FALLBACK = [
+      { clave: "fp1",   sesion: "Práctica Libre 1", fecha: new Date("2026-10-23T13:30:00"), fin: new Date("2026-10-23T14:30:00") },
+      { clave: "fp2",   sesion: "Práctica Libre 2", fecha: new Date("2026-10-23T17:00:00"), fin: new Date("2026-10-23T18:00:00") },
+      { clave: "fp3",   sesion: "Práctica Libre 3", fecha: new Date("2026-10-24T12:30:00"), fin: new Date("2026-10-24T13:30:00") },
+      { clave: "quali", sesion: "Clasificación",    fecha: new Date("2026-10-24T16:00:00"), fin: new Date("2026-10-24T17:00:00") },
+      { clave: "race",  sesion: "Carrera",          fecha: new Date("2026-10-25T15:00:00"), fin: null, pais: "México", bandera: "🇲🇽", circuito: "Autódromo Hermanos Rodríguez · 71 vueltas" },
+    ];
+
+    let SESIONES = []; // lista activa (desde Sheets o respaldo)
+
+    // Formateadores de fecha/hora en español (fijados a la zona ZONA)
+    const fmtDia  = new Intl.DateTimeFormat("es-ES", { weekday: "long", day: "2-digit", month: "long", timeZone: ZONA });
+    const fmtHora = new Intl.DateTimeFormat("es-ES", { hour: "2-digit", minute: "2-digit", timeZone: ZONA });
+    const cap = (txt) => txt.charAt(0).toUpperCase() + txt.slice(1);
+
+    function parseFecha(texto) {
+      if (!texto) return null;
+      if (texto instanceof Date) return isNaN(texto.getTime()) ? null : texto;
+      const d = new Date(String(texto).trim().replace(" ", "T"));
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    // "2026-10-23 13:30 - 15:30" -> { inicio, fin }
+    function parseRango(texto) {
+      if (!texto) return { inicio: null, fin: null };
+      if (texto instanceof Date) return { inicio: parseFecha(texto), fin: null };
+      const partes = String(texto).trim().split(/\s+-\s+/);
+      const inicio = parseFecha(partes[0]);
+      let fin = null;
+      if (inicio && partes[1]) {
+        const m = partes[1].trim().match(/^(\d{1,2}):(\d{2})$/);
+        if (m) {
+          fin = new Date(inicio);
+          fin.setHours(Number(m[1]), Number(m[2]), 0, 0);
+          if (fin < inicio) fin.setDate(fin.getDate() + 1); // cruza medianoche
+        } else {
+          fin = parseFecha(partes[1]);
+        }
+      }
+      return { inicio, fin };
+    }
+
+    // Dos líneas: "Viernes, 02 Octubre" + "13:30 – 15:30"
+    function fmtRango(s) {
+      const dia = cap(fmtDia.format(s.fecha));
+      const horas = s.fin
+        ? `${fmtHora.format(s.fecha)} – ${fmtHora.format(s.fin)}`
+        : fmtHora.format(s.fecha);
+      return `<span class="block">${esc(dia)}</span>
+              <span class="block text-gray-300 text-sm font-semibold">${esc(horas)}
+                <span class="text-gray-500 text-[10px] font-normal normal-case">(${esc(ZONA_LABEL)})</span>
+              </span>`;
+    }
+
+    function sesionCarrera() {
+      return SESIONES.find(s => s.clave === "race") || SESIONES[SESIONES.length - 1];
+    }
+
+    // Índice de la "próxima sesión" (la primera que aún no ha terminado)
+    function indiceProxima() {
+      const ahora = new Date();
+      for (let i = 0; i < SESIONES.length; i++) {
+        const s = SESIONES[i];
+        const finRef = s.fin || s.fecha;
+        if (ahora < finRef) return i; // aún no termina -> es la próxima
+      }
+      return -1; // todas finalizadas
+    }
+
+    // Título del contador grande + circuito
+    function pintarTitulo() {
+      const carrera = sesionCarrera();
+      const pais    = carrera && carrera.pais    ? carrera.pais    : "";
+      const bandera = carrera && carrera.bandera ? carrera.bandera : "";
+      document.getElementById("race-title").textContent =
+        `Gran Premio ${pais} ${bandera}`.replace(/\s+/g, " ").trim();
+      const circuito = carrera && carrera.circuito ? carrera.circuito : "";
+      document.getElementById("race-circuit").textContent = circuito;
+    }
+
+    // Construye las tarjetas del horario
+    function pintarHorario() {
+      const grid = document.getElementById("schedule-grid");
+      if (!SESIONES.length) {
+        grid.innerHTML = `<div class="col-span-full py-6 text-center text-gray-500">Sin sesiones configuradas.</div>`;
+        return;
+      }
+      const prox = indiceProxima();
+
+      grid.innerHTML = SESIONES.map((s, i) => {
+        const esCarrera  = s.clave === "race";
+        const esProxima  = i === prox;
+        const borde  = esCarrera ? "border border-red-600/40" : "border border-white/10";
+        const glow   = esProxima ? "next-session" : "";
+        const titulo = esCarrera ? "text-red-600 font-bold" : "text-gray-400";
+        const badge  = esProxima
+          ? `<span class="absolute -top-2 right-3 bg-red-600 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">Siguiente</span>`
+          : "";
+        return `
+          <div class="relative glass-dark rounded-xl p-5 text-center ${borde} ${glow}">
+            ${badge}
+            <p class="${titulo} text-xs uppercase tracking-widest mb-2">${esc(s.sesion)}</p>
+            <div class="text-base font-bold text-white leading-tight">${fmtRango(s)}</div>
+            <p id="sess-countdown-${i}" class="text-red-600 text-sm font-semibold mt-1 tabular-nums">--:--:--</p>
+          </div>`;
+      }).join("");
+    }
+
+    // Carga el horario desde Sheets (o respaldo) y ejecuta onReady
+    function cargarHorario(url, onReady) {
+      if (!url) { SESIONES = SESIONES_FALLBACK.slice(); onReady(); return; }
+      const procesar = (datos) => datos.map((fila) => {
+        const valores = Object.values(fila);
+        const rango = parseRango(fila.fecha ?? valores[2]);
+        return {
+          clave:    (fila.clave  ?? valores[0] ?? "").toString().trim().toLowerCase(),
+          sesion:   (fila.sesion ?? valores[1] ?? "Sesión").toString().trim(),
+          fecha:    rango.inicio,
+          fin:      rango.fin,
+          pais:     (fila.pais     ?? "").toString().trim(),
+          bandera:  (fila.bandera  ?? "").toString().trim(),
+          circuito: (fila.circuito ?? "").toString().trim(),
+        };
+      }).filter(s => s.fecha);
+
+      parseCSV(url, function (datos) {
+        const filas = procesar(datos);
+        SESIONES = filas.length ? filas : SESIONES_FALLBACK.slice();
+        onReady();
+      }, function () {
+        SESIONES = SESIONES_FALLBACK.slice();
+        onReady();
+      });
+    }
+
+    // Estado de una sesión: cuenta regresiva / "En curso" / "Finalizado"
+    function restante(s) {
+      const ahora = new Date();
+      const diff = s.fecha - ahora;
+      if (diff > 0) {
+        const d = Math.floor(diff / 86400000);
+        const h = Math.floor((diff % 86400000) / 3600000);
+        const m = Math.floor((diff % 3600000) / 60000);
+        const seg = Math.floor((diff % 60000) / 1000);
+        const p = (n) => String(n).padStart(2, "0");
+        return `${d}d ${p(h)}:${p(m)}:${p(seg)}`;
+      }
+      if (s.fin && ahora < s.fin) return "En curso";
+      return "Finalizado";
+    }
+
+    /* =========================================================
+       3) CONTADOR PRINCIPAL + MINI CONTADORES (tick cada segundo)
+       ========================================================= */
+    let ultSeg = -1; // para animar solo cuando cambia el segundo
+
+    function setDigito(id, valor) {
+      const el = document.getElementById(id);
+      if (!el || el.textContent === valor) return;
+      el.textContent = valor;
+    }
+
+    function tick() {
+      const p = (n) => String(Math.max(n, 0)).padStart(2, "0");
+      const carrera = sesionCarrera();
+      const ahora = new Date();
+      const diff = carrera ? (carrera.fecha - ahora) : 0;
+      const statusEl = document.getElementById("race-status");
+
+      if (carrera && diff > 0) {
+        // Cuenta regresiva activa
+        setDigito("race-days",  p(Math.floor(diff / 86400000)));
+        setDigito("race-hours", p(Math.floor((diff % 86400000) / 3600000)));
+        setDigito("race-mins",  p(Math.floor((diff % 3600000) / 60000)));
+        const seg = Math.floor((diff % 60000) / 1000);
+        setDigito("race-secs",  p(seg));
+        statusEl.classList.add("hidden");
+
+        // Pulso del segundero al cambiar de segundo
+        if (seg !== ultSeg) {
+          ultSeg = seg;
+          const sEl = document.getElementById("race-secs");
+          sEl.classList.remove("tick-pulse");
+          void sEl.offsetWidth; // reinicia la animación
+          sEl.classList.add("tick-pulse");
+        }
+      } else {
+        ["race-days","race-hours","race-mins","race-secs"].forEach(id => setDigito(id, "00"));
+        // Mensaje de estado de la carrera (en curso / finalizada)
+        if (carrera) {
+          const enCurso = carrera.fin && ahora < carrera.fin;
+          statusEl.textContent = enCurso ? "🏁 Carrera en curso" : "Carrera finalizada";
+          statusEl.className = "mt-6 text-lg font-bold uppercase tracking-widest " +
+            (enCurso ? "text-green-500" : "text-gray-500");
+        }
+      }
+
+      // Mini contadores por sesión
+      SESIONES.forEach((s, i) => {
+        const el = document.getElementById("sess-countdown-" + i);
+        if (!el) return;
+        const txt = restante(s);
+        el.textContent = txt;
+        el.classList.remove("text-red-600", "text-green-500", "text-gray-500");
+        if (txt === "En curso")        el.classList.add("text-green-500");
+        else if (txt === "Finalizado") el.classList.add("text-gray-500");
+        else                           el.classList.add("text-red-600");
+      });
+
+      actualizarEnVivo(); // badge EN VIVO + banner "Ahora en pista"
+    }
+
+    /* =========================================================
+       3b) CALENDARIO DE PRÓXIMOS GPS (hoja "Calendario", opcional)
+       Columnas: gp | pais | bandera | fecha
+       ========================================================= */
+    // Interpreta la fecha del calendario en el formato "2026-10-11 - 07:00"
+    // (fecha, guion con espacios, hora). También acepta "2026-10-11 07:00"
+    // y "2026-10-11" (sin hora). El guion une fecha y hora en un solo Date.
+    function parseFechaCalendario(texto) {
+      if (!texto) return null;
+      if (texto instanceof Date) return isNaN(texto.getTime()) ? null : texto;
+      // Normaliza: quita el " - " que separa fecha y hora -> "2026-10-11 07:00"
+      const limpio = String(texto).trim().replace(/\s+-\s+/, " ");
+      return parseFecha(limpio);
+    }
+
+    function cargarCalendario(url) {
+      const grid = document.getElementById("calendar-grid");
+      if (!url) {
+        grid.innerHTML = `<div class="col-span-full py-6 text-center text-gray-500">Configura la hoja Calendario (opcional).</div>`;
+        return;
+      }
+      parseCSV(url, (filas) => {
+        const hoy = new Date();
+        const items = filas.map(f => {
+          const v = Object.values(f);
+          return {
+            gp:      esc(f.gp ?? f.GP ?? v[0] ?? "GP"),
+            pais:    esc(f.pais ?? v[1] ?? ""),
+            bandera: esc(f.bandera ?? v[2] ?? ""),
+            fecha:   parseFechaCalendario(f.fecha ?? v[3]),
+          };
+        }).filter(x => x.fecha && x.fecha >= hoy)       // solo próximos
+          .sort((a, b) => a.fecha - b.fecha)
+          .slice(0, 4);                                  // los 4 más cercanos
+
+        if (!items.length) {
+          grid.innerHTML = `<div class="col-span-full py-6 text-center text-gray-500">Sin próximos GP.</div>`;
+          return;
+        }
+        grid.innerHTML = items.map(x => `
+          <div class="glass-dark rounded-xl p-5 text-center border border-white/10">
+            <p class="text-3xl mb-1">${x.bandera || "🏁"}</p>
+            <p class="text-white font-bold leading-tight">${x.gp}</p>
+            <p class="text-gray-400 text-xs mt-1">${cap(fmtDia.format(x.fecha))}</p>
+            <p class="text-gray-300 text-sm font-semibold mt-0.5 tabular-nums">${fmtHora.format(x.fecha)}
+              <span class="text-gray-500 text-[10px] font-normal">(${esc(ZONA_LABEL)})</span>
+            </p>
+          </div>`).join("");
+        fade(grid);
+      }, () => {
+        grid.innerHTML = `<div class="col-span-full py-6 text-center text-red-500">No se pudo cargar el calendario.</div>`;
+      });
+    }
+
+    /* =========================================================
+       3c) RELOJ, EN VIVO, BANNER "AHORA EN PISTA", TICKER
+       ========================================================= */
+    // Reloj en el header (en la zona ZONA)
+    const fmtReloj = new Intl.DateTimeFormat("es-ES", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: ZONA });
+    function reloj() {
+      const el = document.getElementById("clock");
+      if (el) el.textContent = "🕐 " + fmtReloj.format(new Date());
+    }
+
+    // Muestra/oculta el badge EN VIVO y el banner "Ahora en pista"
+    function actualizarEnVivo() {
+      const ahora = new Date();
+      const enCurso = SESIONES.find(s => s.fin && ahora >= s.fecha && ahora < s.fin);
+      const badge  = document.getElementById("live-badge");
+      const banner = document.getElementById("track-banner");
+      if (enCurso) {
+        badge.classList.remove("hidden"); badge.classList.add("inline-flex");
+        banner.classList.remove("hidden");
+        document.getElementById("track-banner-name").textContent =
+          enCurso.sesion + (sesionCarrera()?.pais ? " · GP " + sesionCarrera().pais : "");
+      } else {
+        badge.classList.add("hidden"); badge.classList.remove("inline-flex");
+        banner.classList.add("hidden");
+      }
+    }
+
+    // Construye la cinta inferior con datos dinámicos
+    function pintarTicker() {
+      const el = document.getElementById("ticker");
+      if (!el) return;
+      const carrera = sesionCarrera();
+      const prox = indiceProxima();
+      const partes = [];
+      if (carrera && carrera.pais) partes.push(`🏁 Próxima carrera: GP ${carrera.pais}`);
+      if (prox >= 0 && SESIONES[prox]) partes.push(`⏱️ Siguiente sesión: ${SESIONES[prox].sesion}`);
+      partes.push("🏎️ Paddock Club ES");
+      // Se repite el contenido para que la marquesina no deje huecos
+      const texto = partes.join("  •  ");
+      el.textContent = texto + "  •  " + texto;
+    }
+
+    /* =========================================================
+       3d) AUTO-SCROLL ENTRE SECCIONES (?autoscroll=1)
+       ========================================================= */
+    function iniciarAutoScroll() {
+      if (!AUTOSCROLL) return;
+      const ids = ["proxima-carrera", "podios", "grilla", "horario", "clasificaciones", "calendario"];
+      let i = 0;
+      setInterval(() => {
+        i = (i + 1) % ids.length;
+        document.getElementById(ids[i])?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 10000); // cambia de sección cada 10 s
+    }
+
+    /* =========================================================
+       4) ARRANQUE + AUTO-REFRESH
+       ========================================================= */
+    let intervaloTick = null;
+
+    function cargarTodo() {
+      cargarTabla(DRIVERS_CSV_URL, "drivers-body", true,  "drivers-updated");
+      cargarTabla(TEAMS_CSV_URL,   "teams-body",   false, "teams-updated");
+      cargarPodio(PODIUM_CSV_URL,      "podio-body",      "podio-gp");
+      cargarPodio(PODIUM_HIST_CSV_URL, "podio-hist-body", "podio-hist-gp");
+      cargarGrilla(GRID_CSV_URL, "grid-body", "grid-gp");
+      cargarCalendario(CALENDAR_CSV_URL);
+      cargarHorario(SCHEDULE_CSV_URL, function () {
+        pintarTitulo();
+        pintarHorario();
+        pintarTicker();
+        tick();
+        if (!intervaloTick) intervaloTick = setInterval(tick, 1000);
+      });
+    }
+
+    // Arranque
+    reloj();
+    setInterval(reloj, 1000);     // reloj del header
+    cargarTodo();
+    iniciarAutoScroll();          // solo si ?autoscroll=1
+    setInterval(cargarTodo, REFRESH_MS); // auto-refresh de datos
+  </script>
+</body>
+</html>
