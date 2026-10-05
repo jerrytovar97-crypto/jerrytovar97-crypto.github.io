@@ -143,61 +143,65 @@
   <!-- ===================== CONTENIDO ===================== -->
   <main class="flex-1 w-full max-w-7xl mx-auto px-4 md:px-6 py-10 space-y-10">
 
-    <!-- ========== SECCIÓN CONTADOR PRÓXIMA CARRERA (PROTAGONISTA) ========== -->
-    <section id="proxima-carrera" data-overlay class="glass-dark rounded-3xl p-8 md:p-12 text-center scroll-mt-28">
-      <p class="text-red-600 font-bold uppercase tracking-[0.3em] text-sm mb-2">Próxima Carrera</p>
-      <h2 id="race-title" class="text-2xl md:text-4xl font-black uppercase mb-2">Gran Premio</h2>
-      <!-- Circuito / datos del GP (opcionales desde la hoja Horario) -->
-      <p id="race-circuit" class="text-gray-400 text-sm mb-8"></p>
+    <!-- ========== CONTADOR + PODIOS (misma fila) ========== -->
+    <section id="proxima-carrera" data-overlay class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch scroll-mt-28">
 
-      <!-- Countdown grande (aria-live para lectores de pantalla) -->
-      <div class="flex justify-center gap-3 sm:gap-4 md:gap-8" role="timer" aria-live="off" aria-label="Cuenta regresiva para la próxima carrera">
-        <div class="flex flex-col items-center">
-          <span id="race-days" class="text-4xl sm:text-6xl md:text-8xl font-black text-white tabular-nums">00</span>
-          <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Días</span>
-        </div>
-        <span class="text-4xl sm:text-6xl md:text-8xl font-black text-red-600">:</span>
-        <div class="flex flex-col items-center">
-          <span id="race-hours" class="text-4xl sm:text-6xl md:text-8xl font-black text-white tabular-nums">00</span>
-          <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Horas</span>
-        </div>
-        <span class="text-4xl sm:text-6xl md:text-8xl font-black text-red-600">:</span>
-        <div class="flex flex-col items-center">
-          <span id="race-mins" class="text-4xl sm:text-6xl md:text-8xl font-black text-white tabular-nums">00</span>
-          <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Min</span>
-        </div>
-        <span class="text-4xl sm:text-6xl md:text-8xl font-black text-red-600">:</span>
-        <div class="flex flex-col items-center">
-          <span id="race-secs" class="text-4xl sm:text-6xl md:text-8xl font-black text-red-600 tabular-nums">00</span>
-          <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Seg</span>
-        </div>
-      </div>
-      <!-- Mensaje cuando la carrera está en curso / finalizada -->
-      <p id="race-status" class="mt-6 text-lg font-bold uppercase tracking-widest hidden"></p>
-    </section>
+      <!-- Contador (ocupa 2 de 3 columnas) -->
+      <div class="glass-dark rounded-3xl p-8 md:p-10 text-center lg:col-span-2 flex flex-col justify-center">
+        <p class="text-red-600 font-bold uppercase tracking-[0.3em] text-sm mb-2">Próxima Carrera</p>
+        <h2 id="race-title" class="text-2xl md:text-4xl font-black uppercase mb-2">Gran Premio</h2>
+        <!-- Circuito / datos del GP (opcionales desde la hoja Horario) -->
+        <p id="race-circuit" class="text-gray-400 text-sm mb-8"></p>
 
-    <!-- ========== PODIOS (ÚLTIMA CARRERA + HISTÓRICO) ========== -->
-    <section id="podios" data-overlay class="grid grid-cols-1 lg:grid-cols-2 gap-8 scroll-mt-28">
-      <!-- Podio última carrera -->
-      <div class="glass rounded-2xl p-6 md:p-8">
-        <h3 class="text-xl md:text-2xl font-bold uppercase mb-6 flex items-center gap-3 flex-wrap">
-          <span class="h-6 w-1 bg-red-600 rounded-full"></span>
-          Podio · Última Carrera
-          <span id="podio-gp" class="text-sm font-normal text-gray-400 normal-case"></span>
-        </h3>
-        <div id="podio-body" class="space-y-3">
-          <div class="py-6 text-center text-gray-500 animate-pulse">Cargando podio…</div>
+        <!-- Countdown grande (aria-live para lectores de pantalla) -->
+        <div class="flex justify-center gap-3 sm:gap-4 md:gap-6" role="timer" aria-live="off" aria-label="Cuenta regresiva para la próxima carrera">
+          <div class="flex flex-col items-center">
+            <span id="race-days" class="text-4xl sm:text-6xl md:text-7xl font-black text-white tabular-nums">00</span>
+            <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Días</span>
+          </div>
+          <span class="text-4xl sm:text-6xl md:text-7xl font-black text-red-600">:</span>
+          <div class="flex flex-col items-center">
+            <span id="race-hours" class="text-4xl sm:text-6xl md:text-7xl font-black text-white tabular-nums">00</span>
+            <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Horas</span>
+          </div>
+          <span class="text-4xl sm:text-6xl md:text-7xl font-black text-red-600">:</span>
+          <div class="flex flex-col items-center">
+            <span id="race-mins" class="text-4xl sm:text-6xl md:text-7xl font-black text-white tabular-nums">00</span>
+            <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Min</span>
+          </div>
+          <span class="text-4xl sm:text-6xl md:text-7xl font-black text-red-600">:</span>
+          <div class="flex flex-col items-center">
+            <span id="race-secs" class="text-4xl sm:text-6xl md:text-7xl font-black text-red-600 tabular-nums">00</span>
+            <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Seg</span>
+          </div>
         </div>
+        <!-- Mensaje cuando la carrera está en curso / finalizada -->
+        <p id="race-status" class="mt-6 text-lg font-bold uppercase tracking-widest hidden"></p>
       </div>
-      <!-- Podio histórico del GP próximo -->
-      <div class="glass rounded-2xl p-6 md:p-8">
-        <h3 class="text-xl md:text-2xl font-bold uppercase mb-6 flex items-center gap-3 flex-wrap">
-          <span class="h-6 w-1 bg-red-600 rounded-full"></span>
-          Última Edición
-          <span id="podio-hist-gp" class="text-sm font-normal text-gray-400 normal-case"></span>
-        </h3>
-        <div id="podio-hist-body" class="space-y-3">
-          <div class="py-6 text-center text-gray-500 animate-pulse">Cargando histórico…</div>
+
+      <!-- Podios compactos (1 columna, apilados al lado del contador) -->
+      <div id="podios" class="flex flex-col gap-6">
+        <!-- Podio última carrera -->
+        <div class="glass rounded-2xl p-4 md:p-5 flex-1">
+          <h3 class="text-sm font-bold uppercase mb-3 flex items-center gap-2 flex-wrap">
+            <span class="h-4 w-1 bg-red-600 rounded-full"></span>
+            Podio · Última Carrera
+            <span id="podio-gp" class="text-xs font-normal text-gray-400 normal-case"></span>
+          </h3>
+          <div id="podio-body" class="space-y-2">
+            <div class="py-4 text-center text-gray-500 text-sm animate-pulse">Cargando podio…</div>
+          </div>
+        </div>
+        <!-- Podio histórico del GP próximo -->
+        <div class="glass rounded-2xl p-4 md:p-5 flex-1">
+          <h3 class="text-sm font-bold uppercase mb-3 flex items-center gap-2 flex-wrap">
+            <span class="h-4 w-1 bg-red-600 rounded-full"></span>
+            Última Edición
+            <span id="podio-hist-gp" class="text-xs font-normal text-gray-400 normal-case"></span>
+          </h3>
+          <div id="podio-hist-body" class="space-y-2">
+            <div class="py-4 text-center text-gray-500 text-sm animate-pulse">Cargando histórico…</div>
+          </div>
         </div>
       </div>
     </section>
@@ -561,14 +565,14 @@
           const color  = colorEquipo(equipo);
           const resalte = i === 0 ? "bg-red-600/10 border-red-600/30" : "border-white/10";
           return `
-            <div class="flex items-center gap-4 rounded-xl border ${resalte} bg-black/30 p-3">
-              <span class="text-2xl w-8 text-center">${MEDALLAS[i] || pos}</span>
-              <span class="team-bar h-10" style="background:${color}"></span>
+            <div class="flex items-center gap-2.5 rounded-lg border ${resalte} bg-black/30 p-2">
+              <span class="text-lg w-6 text-center shrink-0">${MEDALLAS[i] || pos}</span>
+              <span class="team-bar h-7" style="background:${color}"></span>
               <div class="flex-1 min-w-0">
-                <p class="text-white font-bold truncate">${piloto}</p>
-                <p class="text-gray-400 text-sm truncate">${equipo}</p>
+                <p class="text-white font-bold text-sm truncate leading-tight">${piloto}</p>
+                <p class="text-gray-400 text-xs truncate leading-tight">${equipo}</p>
               </div>
-              <span class="text-gray-500 font-black text-xl">P${pos}</span>
+              <span class="text-gray-500 font-black text-sm shrink-0">P${pos}</span>
             </div>`;
         }).join("");
         fade(body);
