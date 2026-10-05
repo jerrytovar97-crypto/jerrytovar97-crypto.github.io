@@ -236,12 +236,17 @@
         <span id="grid-gp" class="text-sm font-normal text-gray-400 normal-case"></span>
       </h3>
 
-      <!-- Grilla sin scroll: pares de posiciones (P1-P2, P3-P4...) que
-           envuelven en varias columnas según el ancho. Dentro de cada par,
-           la posición impar va adelantada (zigzag). Pensado para proyectar
-           en Streamlabs, donde no hay scroll ni interacción. -->
-      <div id="grid-body" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-x-6 gap-y-4">
-        <div class="col-span-full py-6 text-center text-gray-500 animate-pulse">Cargando grilla…</div>
+      <!-- Pista horizontal: salida a la izquierda, se avanza a la derecha.
+           Dos filas escalonadas (zigzag). Cajones compactos para que los
+           20 pilotos quepan sin scroll al proyectar en Streamlabs. -->
+      <div class="flex items-stretch">
+        <!-- Línea de salida (meta a cuadros, vertical) -->
+        <div class="w-2 rounded-l mr-3 shrink-0"
+             style="background-image: repeating-linear-gradient(0deg,#fff 0 8px,#000 8px 16px); background-size: 8px 16px;"></div>
+        <!-- Las posiciones se generan dinámicamente (dos filas zigzag) -->
+        <div id="grid-body" class="flex-1 grid grid-rows-2 grid-flow-col auto-cols-fr gap-x-1.5 gap-y-3">
+          <div class="row-span-2 py-6 text-center text-gray-500 animate-pulse">Cargando grilla…</div>
+        </div>
       </div>
     </section>
 
@@ -624,20 +629,19 @@
     /* =========================================================
        1c) GRILLA DE PARTIDA (hoja "Grilla")
        Columnas: pos | piloto | equipo   (opcional: gp)
-       Se agrupa en pares (P1-P2, P3-P4...) con línea de salida a
-       cuadros; la posición impar va adelantada (zigzag). Los pares
-       envuelven en varias columnas, sin scroll, para proyectar en
-       Streamlabs (donde no hay interacción).
+       Layout horizontal en zigzag (dos filas): impares arriba, pares
+       abajo adelantados. Cajones compactos para que quepan los 20
+       pilotos sin scroll al proyectar en Streamlabs.
        ========================================================= */
     function cargarGrilla(url, bodyId, gpLabelId) {
       const body = document.getElementById(bodyId);
       if (!url) {
-        body.innerHTML = `<div class="col-span-full py-6 px-4 text-center text-gray-500">Configura la URL del CSV (hoja Grilla).</div>`;
+        body.innerHTML = `<div class="row-span-2 py-6 px-4 text-center text-gray-500">Configura la URL del CSV (hoja Grilla).</div>`;
         return;
       }
       parseCSV(url, (filas) => {
         if (!filas.length) {
-          body.innerHTML = `<div class="col-span-full py-6 px-4 text-center text-gray-500">Sin datos de grilla.</div>`;
+          body.innerHTML = `<div class="row-span-2 py-6 px-4 text-center text-gray-500">Sin datos de grilla.</div>`;
           return;
         }
         // Etiqueta del GP (opcional)
@@ -645,45 +649,33 @@
         const lbl = document.getElementById(gpLabelId);
         if (lbl) lbl.textContent = gp ? "· " + gp : "";
 
-        // Un cajón de piloto (reutilizable). esImpar = posición adelantada (zigzag)
-        const cajon = (f, i, esImpar) => {
+        // grid-rows-2 + grid-flow-col: impares (P1,P3..) fila de arriba,
+        // pares (P2,P4..) fila de abajo. Cajón compacto en vertical:
+        // número grande arriba, piloto y equipo debajo.
+        body.innerHTML = filas.map((f, i) => {
           const v = Object.values(f);
           const pos    = esc(f.pos ?? f.Pos ?? v[0] ?? (i + 1));
           const piloto = esc(f.piloto ?? f.Piloto ?? v[1] ?? "—");
           const equipo = esc(f.equipo ?? f.Equipo ?? v[2] ?? "");
           const color  = colorEquipo(equipo);
-          const zig = esImpar ? "" : "translate-x-4";          // la par se adelanta
+          const filaAbajo = i % 2 === 1;                 // zigzag: la de abajo se adelanta
+          const zig = filaAbajo ? "translate-x-2" : "";
           const p1  = i === 0 ? "ring-2 ring-red-600" : "";
+          // Toma solo el apellido para ahorrar espacio (última palabra)
+          const corto = piloto.split(" ").slice(-1)[0];
           return `
             <div class="transform ${zig}">
-              <div class="flex items-center gap-2 rounded-lg border border-white/10 bg-black/40 p-2.5 ${p1}">
-                <span class="font-black text-base w-9 text-center text-red-600 tabular-nums">P${pos}</span>
-                <span class="team-bar h-9" style="background:${color}"></span>
-                <div class="min-w-0">
-                  <p class="text-white font-bold text-sm truncate">${piloto}</p>
-                  <p class="text-gray-400 text-xs truncate">${equipo}</p>
-                </div>
+              <div class="relative rounded-md border border-white/10 bg-black/40 pt-1 pb-1.5 px-1 text-center overflow-hidden ${p1}">
+                <span class="absolute left-0 top-0 bottom-0 w-1" style="background:${color}"></span>
+                <p class="text-red-600 font-black text-sm leading-none tabular-nums">P${pos}</p>
+                <p class="text-white font-bold text-xs leading-tight truncate mt-0.5" title="${piloto}">${corto}</p>
+                <p class="text-gray-400 text-[10px] leading-tight truncate">${equipo}</p>
               </div>
             </div>`;
-        };
-
-        // Agrupa en pares (P1-P2, P3-P4...) con línea de salida a cuadros.
-        // Los pares envuelven en varias columnas sin necesidad de scroll.
-        let html = "";
-        for (let i = 0; i < filas.length; i += 2) {
-          const impar = cajon(filas[i], i, true);
-          const par   = filas[i + 1] ? cajon(filas[i + 1], i + 1, false) : "";
-          html += `
-            <div class="flex gap-2">
-              <div class="w-2 rounded shrink-0"
-                   style="background-image: repeating-linear-gradient(0deg,#fff 0 8px,#000 8px 16px); background-size: 8px 16px;"></div>
-              <div class="flex-1 space-y-3">${impar}${par}</div>
-            </div>`;
-        }
-        body.innerHTML = html;
+        }).join("");
         fade(body);
       }, () => {
-        body.innerHTML = `<div class="col-span-full py-8 text-center">
+        body.innerHTML = `<div class="row-span-2 py-8 text-center">
           <span class="block text-2xl mb-1">⚠️</span>
           <span class="text-red-500 font-semibold">No se pudo cargar la grilla.</span>
           <span class="block text-gray-500 text-xs mt-1">Revisa que la hoja esté publicada como CSV.</span>
