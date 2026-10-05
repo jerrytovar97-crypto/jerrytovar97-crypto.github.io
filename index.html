@@ -51,6 +51,18 @@
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
     }
 
+    /* Fallback: si el navegador NO soporta backdrop-filter (algunos
+       navegadores embebidos como el de Streamlabs/OBS), el desenfoque no
+       se aplica y las tarjetas quedarían casi transparentes y poco legibles.
+       Aquí les damos un fondo más opaco para asegurar la legibilidad. */
+    @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+      .glass      { background: rgba(20, 20, 20, 0.92); }
+      .glass-dark { background: rgba(0, 0, 0, 0.88); }
+      /* En overlay dejamos algo de transparencia para ver la escena detrás */
+      body.overlay .glass      { background: rgba(20, 20, 20, 0.72); }
+      body.overlay .glass-dark { background: rgba(0, 0, 0, 0.72); }
+    }
+
     /* Scrollbar oscura */
     ::-webkit-scrollbar { width: 10px; height: 10px; }
     ::-webkit-scrollbar-track { background: #0a0a0a; }
@@ -97,6 +109,16 @@
     body.overlay .glass, body.overlay .glass-dark { box-shadow: none; }
     body.overlay [data-hide-overlay] { display: none !important; }
     body.overlay main { padding-top: 1rem; }
+
+    /* ===== MODO ESCENA (?scene=<id>) =====
+       Muestra una sola sección a pantalla completa; oculta el resto.
+       Ideal para tener una fuente de navegador por módulo en Streamlabs. */
+    body.scene [data-hide-overlay] { display: none !important; }
+    body.scene main { padding: 1rem !important; }
+    body.scene main > section { display: none !important; }
+    /* La escena activa gana (selector más específico que data-hide-overlay) */
+    body.scene main > section.scene-active { display: grid !important; }
+    body.scene main > section.scene-active.is-block { display: block !important; }
 
     /* Respeta usuarios que prefieren menos movimiento */
     @media (prefers-reduced-motion: reduce) {
@@ -207,30 +229,24 @@
     </section>
 
     <!-- ========== GRILLA DE PARTIDA (horizontal, zigzag) ========== -->
-    <section id="grilla" data-overlay class="glass rounded-2xl p-6 md:p-8 scroll-mt-28">
+    <section id="grilla" data-overlay class="is-block glass rounded-2xl p-6 md:p-8 scroll-mt-28">
       <h3 class="text-xl md:text-2xl font-bold uppercase mb-6 flex items-center gap-3 flex-wrap">
         <span class="h-6 w-1 bg-red-600 rounded-full"></span>
         Grilla de Partida
         <span id="grid-gp" class="text-sm font-normal text-gray-400 normal-case"></span>
       </h3>
 
-      <!-- Pista horizontal: la salida está a la izquierda y se avanza hacia la derecha.
-           Dos filas escalonadas simulan el zigzag de la grilla real. -->
-      <div class="relative overflow-x-auto pb-2">
-        <div class="flex items-stretch min-w-max">
-          <!-- Línea de salida (meta a cuadros, vertical) -->
-          <div class="w-3 rounded-l-lg mr-4 shrink-0"
-               style="background-image: repeating-linear-gradient(0deg,#fff 0 12px,#000 12px 24px); background-size: 12px 24px;"></div>
-          <!-- Las posiciones se generan dinámicamente (dos filas zigzag) -->
-          <div id="grid-body" class="grid grid-rows-2 grid-flow-col gap-x-3 gap-y-4">
-            <div class="row-span-2 py-6 px-4 text-center text-gray-500 animate-pulse">Cargando grilla…</div>
-          </div>
-        </div>
+      <!-- Grilla sin scroll: pares de posiciones (P1-P2, P3-P4...) que
+           envuelven en varias columnas según el ancho. Dentro de cada par,
+           la posición impar va adelantada (zigzag). Pensado para proyectar
+           en Streamlabs, donde no hay scroll ni interacción. -->
+      <div id="grid-body" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-x-6 gap-y-4">
+        <div class="col-span-full py-6 text-center text-gray-500 animate-pulse">Cargando grilla…</div>
       </div>
     </section>
 
     <!-- ========== SECCIÓN HORARIO DEL FIN DE SEMANA ========== -->
-    <section id="horario" data-overlay class="glass rounded-2xl p-6 md:p-8 scroll-mt-28">
+    <section id="horario" data-overlay class="is-block glass rounded-2xl p-6 md:p-8 scroll-mt-28">
       <h3 class="text-xl md:text-2xl font-bold uppercase mb-6 flex items-center gap-3">
         <span class="h-6 w-1 bg-red-600 rounded-full"></span>
         Horario del Fin de Semana
@@ -302,7 +318,7 @@
     </section>
 
     <!-- ========== PRÓXIMOS GRANDES PREMIOS (CALENDARIO) ========== -->
-    <section id="calendario" data-hide-overlay class="glass rounded-2xl p-6 md:p-8 scroll-mt-28">
+    <section id="calendario" data-hide-overlay class="is-block glass rounded-2xl p-6 md:p-8 scroll-mt-28">
       <h3 class="text-xl md:text-2xl font-bold uppercase mb-6 flex items-center gap-3">
         <span class="h-6 w-1 bg-red-600 rounded-full"></span>
         Próximos Grandes Premios
@@ -338,7 +354,7 @@
     const PODIUM_CSV_URL      = csv("2094224019"); // Hoja Podio
     const PODIUM_HIST_CSV_URL = csv("624793501");  // Hoja PodioHistorico
     const CALENDAR_CSV_URL    = csv("54267116");   // Hoja Calendario (opcional)
-    const GRID_CSV_URL        = csv("245017209");                // Hoja Grilla -> pega aquí su CSV
+    const GRID_CSV_URL        = csv("245017209");  // Hoja Grilla
 
     // Cada cuántos ms se vuelven a leer los Sheets (auto-refresh). 60000 = 1 min.
     const REFRESH_MS = 60000;
@@ -354,6 +370,26 @@
     const params = new URLSearchParams(location.search);
     if (params.get("overlay") === "1") document.body.classList.add("overlay");
     const AUTOSCROLL = params.get("autoscroll") === "1";
+
+    // Modo escena: ?scene=<id> muestra solo esa sección (una fuente por módulo).
+    // Alias cómodos -> id real de la sección.
+    const SCENE_ALIAS = {
+      carrera: "proxima-carrera", contador: "proxima-carrera", podios: "proxima-carrera",
+      grilla: "grilla", horario: "horario",
+      clasificacion: "clasificaciones", clasificaciones: "clasificaciones",
+      pilotos: "clasificaciones", equipos: "clasificaciones",
+      calendario: "calendario",
+    };
+    const scene = (params.get("scene") || "").toLowerCase().trim();
+    if (scene) {
+      const id = SCENE_ALIAS[scene] || scene;
+      const sec = document.getElementById(id);
+      if (sec) {
+        document.body.classList.add("scene");
+        if (params.get("overlay") === "1") sec.classList.remove("glass"); // sin recuadro en overlay
+        sec.classList.add("scene-active");
+      }
+    }
 
     /* =========================================================
        COLORES POR ESCUDERÍA
@@ -588,19 +624,20 @@
     /* =========================================================
        1c) GRILLA DE PARTIDA (hoja "Grilla")
        Columnas: pos | piloto | equipo   (opcional: gp)
-       Se dibuja en zigzag: P1 columna izq, P2 der, P3 izq...
-       (como la grilla real de F1). La columna izquierda va
-       adelantada media casilla respecto a la derecha.
+       Se agrupa en pares (P1-P2, P3-P4...) con línea de salida a
+       cuadros; la posición impar va adelantada (zigzag). Los pares
+       envuelven en varias columnas, sin scroll, para proyectar en
+       Streamlabs (donde no hay interacción).
        ========================================================= */
     function cargarGrilla(url, bodyId, gpLabelId) {
       const body = document.getElementById(bodyId);
       if (!url) {
-        body.innerHTML = `<div class="row-span-2 py-6 px-4 text-center text-gray-500">Configura la URL del CSV (hoja Grilla).</div>`;
+        body.innerHTML = `<div class="col-span-full py-6 px-4 text-center text-gray-500">Configura la URL del CSV (hoja Grilla).</div>`;
         return;
       }
       parseCSV(url, (filas) => {
         if (!filas.length) {
-          body.innerHTML = `<div class="row-span-2 py-6 px-4 text-center text-gray-500">Sin datos de grilla.</div>`;
+          body.innerHTML = `<div class="col-span-full py-6 px-4 text-center text-gray-500">Sin datos de grilla.</div>`;
           return;
         }
         // Etiqueta del GP (opcional)
@@ -608,19 +645,17 @@
         const lbl = document.getElementById(gpLabelId);
         if (lbl) lbl.textContent = gp ? "· " + gp : "";
 
-        body.innerHTML = filas.map((f, i) => {
+        // Un cajón de piloto (reutilizable). esImpar = posición adelantada (zigzag)
+        const cajon = (f, i, esImpar) => {
           const v = Object.values(f);
           const pos    = esc(f.pos ?? f.Pos ?? v[0] ?? (i + 1));
           const piloto = esc(f.piloto ?? f.Piloto ?? v[1] ?? "—");
           const equipo = esc(f.equipo ?? f.Equipo ?? v[2] ?? "");
           const color  = colorEquipo(equipo);
-          // grid-rows-2 + grid-flow-col: pares arriba (P1,P3..), impares abajo (P2,P4..).
-          // La fila de abajo se adelanta un poco a la derecha para el efecto zigzag.
-          const filaAbajo = i % 2 === 1;
-          const zig = filaAbajo ? "translate-x-5 md:translate-x-7" : "";
+          const zig = esImpar ? "" : "translate-x-4";          // la par se adelanta
           const p1  = i === 0 ? "ring-2 ring-red-600" : "";
           return `
-            <div class="w-48 transform ${zig}">
+            <div class="transform ${zig}">
               <div class="flex items-center gap-2 rounded-lg border border-white/10 bg-black/40 p-2.5 ${p1}">
                 <span class="font-black text-base w-9 text-center text-red-600 tabular-nums">P${pos}</span>
                 <span class="team-bar h-9" style="background:${color}"></span>
@@ -630,10 +665,25 @@
                 </div>
               </div>
             </div>`;
-        }).join("");
+        };
+
+        // Agrupa en pares (P1-P2, P3-P4...) con línea de salida a cuadros.
+        // Los pares envuelven en varias columnas sin necesidad de scroll.
+        let html = "";
+        for (let i = 0; i < filas.length; i += 2) {
+          const impar = cajon(filas[i], i, true);
+          const par   = filas[i + 1] ? cajon(filas[i + 1], i + 1, false) : "";
+          html += `
+            <div class="flex gap-2">
+              <div class="w-2 rounded shrink-0"
+                   style="background-image: repeating-linear-gradient(0deg,#fff 0 8px,#000 8px 16px); background-size: 8px 16px;"></div>
+              <div class="flex-1 space-y-3">${impar}${par}</div>
+            </div>`;
+        }
+        body.innerHTML = html;
         fade(body);
       }, () => {
-        body.innerHTML = `<div class="row-span-2 py-8 px-4 text-center">
+        body.innerHTML = `<div class="col-span-full py-8 text-center">
           <span class="block text-2xl mb-1">⚠️</span>
           <span class="text-red-500 font-semibold">No se pudo cargar la grilla.</span>
           <span class="block text-gray-500 text-xs mt-1">Revisa que la hoja esté publicada como CSV.</span>
