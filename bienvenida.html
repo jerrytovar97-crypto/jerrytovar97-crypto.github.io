@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Paddock Club ES · En breve comenzamos</title>
+  <meta name="description" content="Pantalla de bienvenida del stream de Fórmula 1 de Paddock Club ES." />
+  <meta name="theme-color" content="#dc2626" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏎️</text></svg>" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: #000;
+      background-image:
+        radial-gradient(circle at 15% 10%, rgba(220, 38, 38, 0.20), transparent 42%),
+        radial-gradient(circle at 85% 90%, rgba(220, 38, 38, 0.12), transparent 46%),
+        linear-gradient(160deg, #0a0a0a 0%, #141414 100%);
+      background-attachment: fixed;
+    }
+
+    /* Glassmorphism (igual que el portal) */
+    .glass-dark {
+      background: rgba(0, 0, 0, 0.40);
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
+    }
+    /* Fallback si el navegador embebido (Streamlabs/OBS) no soporta blur */
+    @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+      .glass-dark { background: rgba(0, 0, 0, 0.88); }
+      body.overlay .glass-dark { background: rgba(0, 0, 0, 0.72); }
+    }
+
+    /* Modo overlay para OBS/Streamlabs (?overlay=1): fondo transparente */
+    body.overlay { background: transparent !important; }
+    body.overlay .glass-dark { box-shadow: none; }
+
+    /* Puntito "EN VIVO EN BREVE" pulsante */
+    @keyframes livePulse { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
+    .live-dot { animation: livePulse 1s ease-in-out infinite; }
+
+    /* Franja a cuadros animada (estilo meta) */
+    @keyframes slideFlag { from { background-position: 0 0; } to { background-position: 48px 0; } }
+    .flag {
+      background-image: repeating-linear-gradient(90deg,#fff 0 12px,#000 12px 24px);
+      background-size: 24px 12px;
+      animation: slideFlag 2s linear infinite;
+    }
+
+    /* Pulso del segundero */
+    @keyframes tickPulse { 0% { transform: scale(1.12); } 100% { transform: scale(1); } }
+    .tick-pulse { animation: tickPulse 0.4s ease-out; }
+
+    /* Barra inferior tipo ticker */
+    .ticker-wrap { overflow: hidden; white-space: nowrap; }
+    .ticker { display: inline-block; padding-left: 100%; animation: tickerMove 30s linear infinite; }
+    @keyframes tickerMove { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .live-dot, .flag, .tick-pulse, .ticker { animation: none; }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen text-white flex flex-col">
+
+  <!-- Franja a cuadros superior -->
+  <div class="flag h-3 w-full"></div>
+
+  <!-- ===================== CONTENIDO CENTRADO ===================== -->
+  <main class="flex-1 flex items-center justify-center px-4 py-10">
+    <section class="glass-dark rounded-3xl p-8 md:p-14 text-center max-w-3xl w-full">
+
+      <!-- Badge superior -->
+      <div class="inline-flex items-center gap-2 bg-red-600 px-4 py-1.5 rounded-full text-xs md:text-sm font-bold uppercase tracking-widest mb-8">
+        <span class="live-dot h-2.5 w-2.5 bg-white rounded-full"></span>
+        En breve comenzamos
+      </div>
+
+      <!-- Marca -->
+      <h1 class="text-4xl md:text-6xl font-black tracking-tight uppercase mb-3">
+        Paddock Club <span class="text-red-600">ES 🇪🇨</span>
+      </h1>
+      <p id="subtitulo" class="text-gray-400 text-base md:text-lg uppercase tracking-[0.25em] mb-10">
+        Transmisión de Fórmula 1
+      </p>
+
+      <!-- Mensaje -->
+      <p class="text-red-600 font-bold uppercase tracking-[0.3em] text-xs md:text-sm mb-4">
+        El stream inicia en
+      </p>
+
+      <!-- Countdown hacia la hora de inicio del stream -->
+      <div id="countdown" class="flex justify-center gap-3 sm:gap-5 md:gap-8" role="timer" aria-live="off" aria-label="Cuenta regresiva para el inicio del stream">
+        <div class="flex flex-col items-center">
+          <span id="h" class="text-5xl sm:text-7xl md:text-8xl font-black text-white tabular-nums">00</span>
+          <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Horas</span>
+        </div>
+        <span class="text-5xl sm:text-7xl md:text-8xl font-black text-red-600">:</span>
+        <div class="flex flex-col items-center">
+          <span id="m" class="text-5xl sm:text-7xl md:text-8xl font-black text-white tabular-nums">00</span>
+          <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Min</span>
+        </div>
+        <span class="text-5xl sm:text-7xl md:text-8xl font-black text-red-600">:</span>
+        <div class="flex flex-col items-center">
+          <span id="s" class="text-5xl sm:text-7xl md:text-8xl font-black text-red-600 tabular-nums">00</span>
+          <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Seg</span>
+        </div>
+      </div>
+
+      <!-- Mensaje cuando ya es la hora -->
+      <p id="go" class="hidden mt-8 text-2xl md:text-3xl font-black uppercase tracking-widest text-green-500">
+        🏁 ¡Arrancamos!
+      </p>
+
+      <!-- Enlace al portal (se oculta en overlay) -->
+      <a id="link-portal" href="index.html"
+         class="inline-block mt-10 text-sm text-gray-400 hover:text-red-600 transition-colors uppercase tracking-widest">
+        Ver portal de datos →
+      </a>
+    </section>
+  </main>
+
+  <!-- Ticker inferior -->
+  <div class="ticker-wrap glass-dark border-t border-white/10 py-2">
+    <div id="ticker" class="ticker text-sm font-semibold text-gray-200 uppercase tracking-wider"></div>
+  </div>
+
+  <!-- Franja a cuadros inferior -->
+  <div class="flag h-3 w-full"></div>
+
+  <script>
+    /* =========================================================
+       CONFIGURACIÓN DE LA PANTALLA DE BIENVENIDA
+       ========================================================= */
+    // Hora a la que arranca el stream. Formatos aceptados:
+    //   - Fecha y hora exactas:   "2026-10-25T14:00:00"
+    //   - O usa minutos desde ahora con ?min=15 en la URL (prueba rápida).
+    const INICIO_STREAM = "2026-10-25T14:00:00";
+
+    // Zona horaria de referencia (igual que el portal)
+    const ZONA = "America/Guayaquil";
+
+    // Texto del subtítulo y del ticker (edítalos a gusto)
+    const SUBTITULO = "Transmisión de Fórmula 1";
+    const MENSAJES_TICKER = [
+      "🏎️ Paddock Club ES",
+      "📊 Clasificaciones, horarios y grilla en vivo",
+      "🔔 Activa las notificaciones para no perderte la carrera",
+      "💬 Saluda en el chat mientras esperamos",
+    ];
+
+    /* --------------------------------------------------------- */
+    const params = new URLSearchParams(location.search);
+    if (params.get("overlay") === "1") {
+      document.body.classList.add("overlay");
+      const l = document.getElementById("link-portal");
+      if (l) l.style.display = "none"; // sin enlaces en overlay
+    }
+
+    // Fecha objetivo: ?min=N tiene prioridad (útil para probar)
+    let objetivo;
+    const min = parseInt(params.get("min"), 10);
+    if (!isNaN(min)) {
+      objetivo = new Date(Date.now() + min * 60000);
+    } else {
+      objetivo = new Date(INICIO_STREAM);
+    }
+
+    document.getElementById("subtitulo").textContent = SUBTITULO;
+
+    // Ticker
+    (function () {
+      const el = document.getElementById("ticker");
+      const texto = MENSAJES_TICKER.join("   •   ");
+      el.textContent = texto + "   •   " + texto; // se repite para no dejar hueco
+    })();
+
+    // Reloj / cuenta regresiva
+    let ultSeg = -1;
+    function pad(n) { return String(Math.max(n, 0)).padStart(2, "0"); }
+
+    function tick() {
+      const diff = objetivo - new Date();
+      const cd = document.getElementById("countdown");
+      const go = document.getElementById("go");
+
+      if (isNaN(objetivo.getTime())) {
+        // Fecha mal escrita: muestra ceros sin romper
+        document.getElementById("h").textContent = "00";
+        document.getElementById("m").textContent = "00";
+        document.getElementById("s").textContent = "00";
+        return;
+      }
+
+      if (diff <= 0) {
+        cd.classList.add("hidden");
+        go.classList.remove("hidden");
+        return;
+      }
+
+      cd.classList.remove("hidden");
+      go.classList.add("hidden");
+
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      document.getElementById("h").textContent = pad(h);
+      document.getElementById("m").textContent = pad(m);
+      document.getElementById("s").textContent = pad(s);
+
+      // Pulso del segundero
+      if (s !== ultSeg) {
+        ultSeg = s;
+        const sEl = document.getElementById("s");
+        sEl.classList.remove("tick-pulse");
+        void sEl.offsetWidth;
+        sEl.classList.add("tick-pulse");
+      }
+    }
+
+    tick();
+    setInterval(tick, 1000);
+  </script>
+</body>
+</html>
