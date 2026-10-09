@@ -93,6 +93,51 @@
     @keyframes livePulse { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
     .live-dot { animation: livePulse 1s ease-in-out infinite; }
 
+    /* ===== Cinco luces de salida F1 (navegación) ===== */
+    .start-light {
+      position: relative;
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .start-light .light {
+      width: 18px; height: 18px;
+      border-radius: 9999px;
+      background: #3a0a0a;                 /* roja apagada (decorativas del medio) */
+      box-shadow: inset 0 0 4px rgba(0,0,0,0.8);
+      display: block;
+      transition: background 0.2s, box-shadow 0.2s, transform 0.2s;
+    }
+    @media (min-width: 768px) {
+      .start-light .light { width: 22px; height: 22px; }
+    }
+    /* Las luces que son enlace (bienvenida/despedida) están encendidas */
+    a.start-light .light {
+      background: radial-gradient(circle at 35% 30%, #ff6b6b, #dc2626 60%, #7f1010);
+      box-shadow: 0 0 10px rgba(220,38,38,0.8), inset 0 0 3px rgba(255,255,255,0.4);
+    }
+    a.start-light:hover .light,
+    a.start-light:focus-visible .light {
+      transform: scale(1.15);
+      box-shadow: 0 0 16px rgba(220,38,38,1), inset 0 0 3px rgba(255,255,255,0.6);
+    }
+    /* Etiqueta que aparece bajo la luz al pasar el cursor */
+    .light-label {
+      position: absolute;
+      top: 100%; margin-top: 6px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #e5e7eb;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    a.start-light:hover .light-label,
+    a.start-light:focus-visible .light-label { opacity: 1; }
+
     /* Transición suave al refrescar tablas */
     .fade-in { animation: fadeIn 0.5s ease; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -145,12 +190,21 @@
       </div>
       <!-- Navegación + reloj -->
       <div class="flex items-center gap-5">
-        <nav aria-label="Navegación principal" class="hidden sm:flex items-center gap-5 text-sm font-semibold uppercase tracking-widest text-gray-300">
-          <a href="#proxima-carrera" class="hover:text-red-600 transition-colors">Carrera</a>
-          <a href="#podios" class="hover:text-red-600 transition-colors">Podios</a>
-          <a href="#grilla" class="hover:text-red-600 transition-colors">Grilla</a>
-          <a href="#horario" class="hover:text-red-600 transition-colors">Horario</a>
-          <a href="#clasificaciones" class="hover:text-red-600 transition-colors">Clasificación</a>
+        <!-- Cinco luces de salida F1: la 1ª va a Bienvenida, la 5ª a Despedida -->
+        <nav aria-label="Navegación" class="flex items-center gap-3 md:gap-4 bg-black/50 border border-white/10 rounded-xl px-4 py-2">
+          <a href="bienvenida.html" title="Bienvenida" aria-label="Ir a la pantalla de bienvenida"
+             class="start-light group">
+            <span class="light"></span>
+            <span class="light-label">Bienvenida</span>
+          </a>
+          <span class="start-light" aria-hidden="true"><span class="light"></span></span>
+          <span class="start-light" aria-hidden="true"><span class="light"></span></span>
+          <span class="start-light" aria-hidden="true"><span class="light"></span></span>
+          <a href="despedida.html" title="Despedida" aria-label="Ir a la pantalla de despedida"
+             class="start-light group">
+            <span class="light"></span>
+            <span class="light-label">Despedida</span>
+          </a>
         </nav>
         <span id="clock" class="text-sm font-bold tabular-nums text-gray-200 bg-black/40 px-3 py-1 rounded-lg border border-white/10"></span>
       </div>
