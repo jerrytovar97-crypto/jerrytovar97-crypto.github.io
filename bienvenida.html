@@ -45,6 +45,24 @@
     @keyframes livePulse { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
     .live-dot { animation: livePulse 1s ease-in-out infinite; }
 
+    /* ===== Cinco luces de salida F1 (secuencia de arranque) ===== */
+    .start-light .light {
+      width: 26px; height: 26px;
+      border-radius: 9999px;
+      background: #3a0a0a;                 /* apagada */
+      box-shadow: inset 0 0 5px rgba(0,0,0,0.8);
+      display: block;
+      transition: background 0.15s, box-shadow 0.15s;
+    }
+    @media (min-width: 768px) {
+      .start-light .light { width: 34px; height: 34px; }
+    }
+    /* Encendida (se aplica/retira por JS en secuencia) */
+    .start-light.on .light {
+      background: radial-gradient(circle at 35% 30%, #ff6b6b, #dc2626 60%, #7f1010);
+      box-shadow: 0 0 14px rgba(220,38,38,0.9), inset 0 0 4px rgba(255,255,255,0.4);
+    }
+
     /* Franja a cuadros animada (estilo meta) */
     @keyframes slideFlag { from { background-position: 0 0; } to { background-position: 48px 0; } }
     .flag {
@@ -85,12 +103,9 @@
       </div>
 
       <!-- Marca -->
-      <h1 class="text-4xl md:text-6xl font-black tracking-tight uppercase mb-3">
+      <h1 class="text-4xl md:text-6xl font-black tracking-tight uppercase mb-8">
         Paddock Club <span class="text-red-600">ES 🇪🇨</span>
       </h1>
-      <p id="subtitulo" class="text-gray-400 text-base md:text-lg uppercase tracking-[0.25em] mb-10">
-        Transmisión de Fórmula 1
-      </p>
 
       <!-- Mensaje -->
       <p class="text-red-600 font-bold uppercase tracking-[0.3em] text-xs md:text-sm mb-4">
@@ -120,11 +135,34 @@
         🏁 ¡Arrancamos!
       </p>
 
-      <!-- Enlace al portal (se oculta en overlay) -->
-      <a id="link-portal" href="index.html"
-         class="inline-block mt-10 text-sm text-gray-400 hover:text-red-600 transition-colors uppercase tracking-widest">
-        Ver portal de datos →
-      </a>
+      <!-- Cinco luces de salida F1 (se encienden una a una y luego se apagan) -->
+      <div id="lights" class="flex justify-center gap-4 md:gap-6 mt-10" aria-hidden="true">
+        <span class="start-light"><span class="light"></span></span>
+        <span class="start-light"><span class="light"></span></span>
+        <span class="start-light"><span class="light"></span></span>
+        <span class="start-light"><span class="light"></span></span>
+        <span class="start-light"><span class="light"></span></span>
+      </div>
+
+      <!-- Redes sociales -->
+      <div class="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8">
+        <!-- TikTok -->
+        <a href="https://www.tiktok.com/@paddock.club.es" target="_blank" rel="noopener"
+           class="group flex items-center gap-3 text-gray-200 hover:text-white transition-colors">
+          <svg viewBox="0 0 24 24" class="w-7 h-7 fill-current" aria-hidden="true">
+            <path d="M16.5 3c.3 2.1 1.6 3.7 3.7 3.9v2.4c-1.3.1-2.5-.3-3.7-1v5.9c0 3.4-2.5 5.9-5.8 5.9A5.6 5.6 0 0 1 5 14.5c0-3.2 2.9-5.6 6.1-5.1v2.5c-.4-.1-.9-.2-1.3-.2-1.6 0-2.7 1.3-2.5 2.9.1 1.3 1.3 2.3 2.6 2.3 1.5 0 2.6-1.1 2.6-2.8V3h2z"/>
+          </svg>
+          <span class="font-bold tracking-wide">@paddock.club.es</span>
+        </a>
+        <!-- Kick -->
+        <a href="https://kick.com/PaddockClubES" target="_blank" rel="noopener"
+           class="group flex items-center gap-3 text-gray-200 hover:text-[#53fc18] transition-colors">
+          <svg viewBox="0 0 24 24" class="w-7 h-7 fill-current" aria-hidden="true">
+            <path d="M3 3h5v5h2V5h2V3h7v7h-2v2h-2v2h2v2h2v7h-7v-2h-2v-3H8v5H3V3z"/>
+          </svg>
+          <span class="font-bold tracking-wide">PaddockClubES</span>
+        </a>
+      </div>
     </section>
   </main>
 
@@ -140,41 +178,45 @@
     /* =========================================================
        CONFIGURACIÓN DE LA PANTALLA DE BIENVENIDA
        ========================================================= */
-    // Hora a la que arranca el stream. Formatos aceptados:
-    //   - Fecha y hora exactas:   "2026-10-25T14:00:00"
-    //   - O usa minutos desde ahora con ?min=15 en la URL (prueba rápida).
-    const INICIO_STREAM = "2026-10-25T14:00:00";
+    // El contador siempre arranca en 15 minutos desde que se abre la página.
+    const MINUTOS_INICIO = 15;
 
-    // Zona horaria de referencia (igual que el portal)
-    const ZONA = "America/Guayaquil";
-
-    // Texto del subtítulo y del ticker (edítalos a gusto)
-    const SUBTITULO = "Transmisión de Fórmula 1";
+    // Mensajes del ticker (edítalos a gusto)
     const MENSAJES_TICKER = [
       "🏎️ Paddock Club ES",
       "📊 Clasificaciones, horarios y grilla en vivo",
-      "🔔 Activa las notificaciones para no perderte la carrera",
       "💬 Saluda en el chat mientras esperamos",
     ];
 
     /* --------------------------------------------------------- */
     const params = new URLSearchParams(location.search);
-    if (params.get("overlay") === "1") {
-      document.body.classList.add("overlay");
-      const l = document.getElementById("link-portal");
-      if (l) l.style.display = "none"; // sin enlaces en overlay
-    }
+    if (params.get("overlay") === "1") document.body.classList.add("overlay");
 
-    // Fecha objetivo: ?min=N tiene prioridad (útil para probar)
-    let objetivo;
-    const min = parseInt(params.get("min"), 10);
-    if (!isNaN(min)) {
-      objetivo = new Date(Date.now() + min * 60000);
-    } else {
-      objetivo = new Date(INICIO_STREAM);
-    }
+    // El objetivo es siempre 15 minutos a partir de ahora (al cargar la página)
+    const objetivo = new Date(Date.now() + MINUTOS_INICIO * 60000);
 
-    document.getElementById("subtitulo").textContent = SUBTITULO;
+    // Secuencia de luces de salida F1: se encienden de una en una (cada ~1s)
+    // y, al completarse las cinco, se apagan todas de golpe. Luego repite.
+    (function () {
+      const luces = Array.from(document.querySelectorAll("#lights .start-light"));
+      if (!luces.length) return;
+      let i = 0;
+      function paso() {
+        if (i < luces.length) {
+          luces[i].classList.add("on");   // enciende la siguiente
+          i++;
+          setTimeout(paso, 1000);
+        } else {
+          // Todas encendidas: pausa breve, apaga y reinicia (como la salida)
+          setTimeout(() => {
+            luces.forEach(l => l.classList.remove("on"));
+            i = 0;
+            setTimeout(paso, 1200);
+          }, 1000);
+        }
+      }
+      paso();
+    })();
 
     // Ticker
     (function () {

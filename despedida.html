@@ -55,6 +55,28 @@
     @keyframes tickPulse { 0% { transform: scale(1.12); } 100% { transform: scale(1); } }
     .tick-pulse { animation: tickPulse 0.4s ease-out; }
 
+    /* ===== Bandera a cuadros ondeando (fin de carrera) ===== */
+    .checkered-flag {
+      width: 150px; height: 100px;
+      border: 3px solid rgba(255,255,255,0.25);
+      border-radius: 6px;
+      background-image:
+        repeating-conic-gradient(#fff 0% 25%, #000 0% 50%);
+      background-size: 30px 30px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+      /* El ondeo se logra deformando la bandera con una onda */
+      animation: wave 1.6s ease-in-out infinite;
+      transform-origin: left center;
+    }
+    @media (min-width: 768px) {
+      .checkered-flag { width: 220px; height: 140px; background-size: 44px 44px; }
+    }
+    @keyframes wave {
+      0%, 100% { transform: perspective(400px) rotateY(0deg) skewY(0deg); }
+      25%      { transform: perspective(400px) rotateY(-8deg) skewY(2deg); }
+      75%      { transform: perspective(400px) rotateY(8deg) skewY(-2deg); }
+    }
+
     /* Barra inferior tipo ticker */
     .ticker-wrap { overflow: hidden; white-space: nowrap; }
     .ticker { display: inline-block; padding-left: 100%; animation: tickerMove 30s linear infinite; }
@@ -123,10 +145,9 @@
         🏁 ¡Es hoy! Nos vemos en pista
       </p>
 
-      <!-- Enlaces (se ocultan en overlay) -->
-      <div id="links" class="mt-10 flex items-center justify-center gap-6 text-sm text-gray-400 uppercase tracking-widest">
-        <a href="index.html" class="hover:text-red-600 transition-colors">← Portal de datos</a>
-        <a href="bienvenida.html" class="hover:text-red-600 transition-colors">Bienvenida</a>
+      <!-- Bandera a cuadros ondeando (indica fin de la transmisión) -->
+      <div class="mt-12 flex justify-center" aria-hidden="true">
+        <div class="checkered-flag"></div>
       </div>
     </section>
   </main>
@@ -163,11 +184,7 @@
 
     /* --------------------------------------------------------- */
     const params = new URLSearchParams(location.search);
-    if (params.get("overlay") === "1") {
-      document.body.classList.add("overlay");
-      const l = document.getElementById("links");
-      if (l) l.style.display = "none"; // sin enlaces en overlay
-    }
+    if (params.get("overlay") === "1") document.body.classList.add("overlay");
 
     // Ticker
     (function () {
