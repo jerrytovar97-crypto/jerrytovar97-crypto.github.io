@@ -9,6 +9,12 @@
   <meta name="theme-color" content="#dc2626" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏎️</text></svg>" />
 
+  <!-- Tipografía estilo F1: Titillium Web (texto) + Saira Condensed (titulares/números).
+       Carga no bloqueante con display=swap; degrada a fuentes de sistema si no carga. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800&family=Titillium+Web:wght@400;600;700;900&display=swap" rel="stylesheet">
+
   <script src="https://cdn.tailwindcss.com"></script>
 
   <style>
@@ -23,31 +29,82 @@
 
     html { scroll-behavior: smooth; }
     body {
-      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-family: 'Titillium Web', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
       background-color: #000;
       background-image:
         radial-gradient(circle at 15% 10%, rgba(220, 38, 38, 0.20), transparent 42%),
         radial-gradient(circle at 85% 90%, rgba(220, 38, 38, 0.12), transparent 46%),
         linear-gradient(160deg, #0a0a0a 0%, #141414 100%);
       background-attachment: fixed;
+      /* Tamaño ampliado para permitir el desplazamiento del fondo animado. */
+      background-size: 200% 200%, 200% 200%, 100% 100%;
     }
 
-    /* Glassmorphism (igual que el portal) */
+    /* Titulares y números en la condensada F1 (Saira Condensed), con fallback. */
+    h1, h2, h3, .f1-head {
+      font-family: 'Saira Condensed', 'Titillium Web', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+    h1, h2 { letter-spacing: -0.01em; }
+    /* Dígitos del countdown en la condensada (conservan tabular-nums) */
+    #h, #m, #s { font-family: 'Saira Condensed', 'Titillium Web', sans-serif; }
+
+    /* Fondo con degradado animado lento ("respiración"), SOLO fuera de overlay. */
+    @keyframes bgBreath {
+      0%   { background-position: 0% 0%, 100% 100%, 0 0; }
+      100% { background-position: 10% 8%, 90% 92%, 0 0; }
+    }
+    body:not(.overlay) { animation: bgBreath 30s ease-in-out infinite alternate; }
+
+    /* Glassmorphism (igual que el portal). Borde teñido de acento + glow sutil. */
     .glass-dark {
+      position: relative;
       background: rgba(0, 0, 0, 0.40);
-      border: 1px solid rgba(255, 255, 255, 0.10);
+      border: 1px solid color-mix(in srgb, var(--acento) 35%, transparent);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 0 22px color-mix(in srgb, var(--acento) 24%, transparent);
     }
+
+    /* Textura de fibra de carbono muy tenue como pseudo-elemento. */
+    .glass-dark::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      z-index: 0;
+      background-image:
+        repeating-linear-gradient(45deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 4px),
+        repeating-linear-gradient(-45deg, rgba(0,0,0,0.12) 0 1px, transparent 1px 4px);
+      opacity: 0.5;
+    }
+    .glass-dark > * { position: relative; z-index: 1; }
+
+    /* Glow reforzado para la tarjeta central protagonista. */
+    .glow-strong {
+      box-shadow: 0 8px 32px rgba(0,0,0,0.55), 0 0 34px color-mix(in srgb, var(--acento) 42%, transparent) !important;
+      border-color: color-mix(in srgb, var(--acento) 55%, transparent) !important;
+    }
+
     /* Fallback si el navegador embebido (Streamlabs/OBS) no soporta blur */
     @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
       .glass-dark { background: rgba(0, 0, 0, 0.88); }
       body.overlay .glass-dark { background: rgba(0, 0, 0, 0.72); }
     }
 
+    /* Fallback de color-mix: restaura el borde blanco 10% y sombras originales. */
+    @supports not (background: color-mix(in srgb, red, blue)) {
+      .glass-dark {
+        border-color: rgba(255, 255, 255, 0.10);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
+      }
+      .glow-strong {
+        box-shadow: 0 8px 32px rgba(0,0,0,0.55), 0 0 24px rgba(220,38,38,0.45) !important;
+      }
+    }
+
     /* Modo overlay para OBS/Streamlabs (?overlay=1): fondo transparente */
-    body.overlay { background: transparent !important; }
+    body.overlay { background: transparent !important; animation: none !important; }
     body.overlay .glass-dark { box-shadow: none; }
 
     /* Puntito "EN VIVO EN BREVE" pulsante */
@@ -94,6 +151,7 @@
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
       .live-dot, .flag, .tick-pulse, .ticker { animation: none; }
+      body:not(.overlay) { animation: none; }
     }
   </style>
 </head>
@@ -105,7 +163,7 @@
 
   <!-- ===================== CONTENIDO CENTRADO ===================== -->
   <main class="flex-1 flex items-center justify-center px-4 py-10">
-    <section class="glass-dark rounded-3xl p-8 md:p-14 text-center max-w-3xl w-full">
+    <section class="glass-dark glow-strong rounded-3xl p-8 md:p-14 text-center max-w-3xl w-full">
 
       <!-- Badge superior -->
       <div class="inline-flex items-center gap-2 bg-red-600 px-4 py-1.5 rounded-full text-xs md:text-sm font-bold uppercase tracking-widest mb-8">

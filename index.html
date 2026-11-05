@@ -14,6 +14,13 @@
   <!-- Favicon F1 (coche en emoji vía SVG inline) -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏎️</text></svg>" />
 
+  <!-- Tipografía estilo F1: Titillium Web (texto) + Saira Condensed (titulares/números).
+       Carga no bloqueante con display=swap: si Google Fonts no responde (p. ej. navegador
+       embebido de OBS sin red), degrada con elegancia a las fuentes de sistema. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800&family=Titillium+Web:wght@400;600;700;900&display=swap" rel="stylesheet">
+
   <!-- Tailwind CSS vía CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- PapaParse vía CDN para leer CSV desde Google Sheets -->
@@ -33,7 +40,7 @@
     /* Fuente y fondo base Dark Mode Premium F1 */
     html { scroll-behavior: smooth; }
     body {
-      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-family: 'Titillium Web', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
       background-color: #000;
       /* Degradado sutil negro/gris + acento rojo tenue de fondo.
          aplicarTema() repinta este background-image con los colores del
@@ -43,24 +50,64 @@
         radial-gradient(circle at 85% 90%, rgba(220, 38, 38, 0.10), transparent 45%),
         linear-gradient(160deg, #0a0a0a 0%, #141414 100%);
       background-attachment: fixed;
+      /* Tamaño ampliado para permitir el desplazamiento del fondo animado
+         (bgBreath). No altera el aspecto estático: las capas radiales son suaves. */
+      background-size: 200% 200%, 200% 200%, 100% 100%;
     }
 
-    /* Efecto Dark Glassmorphism reutilizable */
+    /* Titulares y números en la condensada F1 (Saira Condensed), con fallback. */
+    h1, h2, h3, .f1-head {
+      font-family: 'Saira Condensed', 'Titillium Web', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+    /* Espaciado negativo leve en titulares grandes */
+    h1, h2 { letter-spacing: -0.01em; }
+    /* Dígitos del countdown en la condensada (conservan tabular-nums de Tailwind) */
+    #race-days, #race-hours, #race-mins, #race-secs, [id^="sess-countdown-"] {
+      font-family: 'Saira Condensed', 'Titillium Web', sans-serif;
+    }
+
+    /* Efecto Dark Glassmorphism reutilizable.
+       Borde teñido de acento + glow de baja opacidad (reflejan el tema del país).
+       Con @supports se restaura el borde blanco 10% original si falta color-mix. */
     .glass {
+      position: relative;
       background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.10);
+      border: 1px solid color-mix(in srgb, var(--acento) 35%, transparent);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), 0 0 18px color-mix(in srgb, var(--acento) 22%, transparent);
     }
 
     /* Variante más oscura para contenedores grandes */
     .glass-dark {
+      position: relative;
       background: rgba(0, 0, 0, 0.40);
-      border: 1px solid rgba(255, 255, 255, 0.10);
+      border: 1px solid color-mix(in srgb, var(--acento) 35%, transparent);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 0 22px color-mix(in srgb, var(--acento) 24%, transparent);
+    }
+
+    /* Textura de fibra de carbono muy tenue como pseudo-elemento (no tapa el
+       contenido ni afecta clics; el contenido va por encima con z-index 1). */
+    .glass::before, .glass-dark::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      z-index: 0;
+      background-image:
+        repeating-linear-gradient(45deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 4px),
+        repeating-linear-gradient(-45deg, rgba(0,0,0,0.12) 0 1px, transparent 1px 4px);
+      opacity: 0.5;
+    }
+    .glass > *, .glass-dark > * { position: relative; z-index: 1; }
+
+    /* Glow reforzado para elementos protagonistas (contador grande, pole P1). */
+    .glow-strong {
+      box-shadow: 0 8px 32px rgba(0,0,0,0.55), 0 0 34px color-mix(in srgb, var(--acento) 42%, transparent) !important;
+      border-color: color-mix(in srgb, var(--acento) 55%, transparent) !important;
     }
 
     /* Fallback: si el navegador NO soporta backdrop-filter (algunos
@@ -75,6 +122,22 @@
       body.overlay .glass-dark { background: rgba(0, 0, 0, 0.72); }
     }
 
+    /* Fallback de color-mix (navegador embebido antiguo): restaura el borde
+       blanco al 10% y las sombras originales exactas, sin glow teñido. */
+    @supports not (background: color-mix(in srgb, red, blue)) {
+      .glass {
+        border-color: rgba(255, 255, 255, 0.10);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+      }
+      .glass-dark {
+        border-color: rgba(255, 255, 255, 0.10);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
+      }
+      .glow-strong {
+        box-shadow: 0 8px 32px rgba(0,0,0,0.55), 0 0 24px rgba(220,38,38,0.45) !important;
+      }
+    }
+
     /* Scrollbar oscura (refleja el acento del tema) */
     ::-webkit-scrollbar { width: 10px; height: 10px; }
     ::-webkit-scrollbar-track { background: #0a0a0a; }
@@ -86,6 +149,14 @@
       outline-offset: 3px;
       border-radius: 4px;
     }
+
+    /* Fondo con degradado animado lento ("respiración"), SOLO fuera de overlay.
+       Desplaza background-position de las capas; respeta los colores del tema. */
+    @keyframes bgBreath {
+      0%   { background-position: 0% 0%, 100% 100%, 0 0; }
+      100% { background-position: 10% 8%, 90% 92%, 0 0; }
+    }
+    body:not(.overlay) { animation: bgBreath 30s ease-in-out infinite alternate; }
 
     /* Pulso del segundero en el contador grande */
     @keyframes tickPulse { 0% { transform: scale(1.12); } 100% { transform: scale(1); } }
@@ -164,7 +235,7 @@
 
     /* ===== MODO OVERLAY PARA OBS (?overlay=1) =====
        Fondo transparente; oculta lo marcado con data-hide-overlay. */
-    body.overlay { background: transparent !important; }
+    body.overlay { background: transparent !important; animation: none !important; }
     body.overlay .glass, body.overlay .glass-dark { box-shadow: none; }
     body.overlay [data-hide-overlay] { display: none !important; }
     body.overlay main { padding-top: 1rem; }
@@ -183,6 +254,7 @@
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
       .tick-pulse, .next-session, .live-dot, .ticker, .fade-in { animation: none; }
+      body:not(.overlay) { animation: none; }
     }
   </style>
 </head>
@@ -240,7 +312,7 @@
     <section id="proxima-carrera" data-overlay class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch scroll-mt-28">
 
       <!-- Contador (ocupa 2 de 3 columnas) -->
-      <div class="glass-dark rounded-3xl p-8 md:p-10 text-center lg:col-span-2 flex flex-col justify-center">
+      <div class="glass-dark glow-strong rounded-3xl p-8 md:p-10 text-center lg:col-span-2 flex flex-col justify-center">
         <p class="text-red-600 font-bold uppercase tracking-[0.3em] text-sm mb-2">Próxima Carrera</p>
         <h2 id="race-title" class="text-2xl md:text-4xl font-black uppercase mb-2">Gran Premio</h2>
         <!-- Circuito / datos del GP (opcionales desde la hoja Horario) -->
@@ -821,7 +893,7 @@
           const color  = colorEquipo(equipo);
           const filaAbajo = i % 2 === 1;                 // zigzag: la de abajo se adelanta
           const zig = filaAbajo ? "translate-x-2" : "";
-          const p1  = i === 0 ? "ring-2 ring-red-600" : "";
+          const p1  = i === 0 ? "ring-2 ring-red-600 glow-strong" : "";
           // Toma solo el apellido para ahorrar espacio (última palabra)
           const corto = piloto.split(" ").slice(-1)[0];
           return `
@@ -1261,6 +1333,23 @@
       construirSelector(lista);
       aplicarTema(resolverTema(lista));
     });
+
+    // Secuencia de luces de salida F1 al cargar (UNA sola pasada): las 5 parten
+    // apagadas y se encienden de una en una (~700ms); al terminar quedan todas
+    // encendidas (NO se apagan). Con reduce-motion se muestran encendidas de
+    // inmediato. El markup ya trae "on", así que si el JS no corre quedan
+    // encendidas igual (degradación segura) y la 1ª/5ª siguen siendo enlaces.
+    function iniciarSecuenciaLuces() {
+      const lucesHeader = Array.from(document.querySelectorAll("header nav .start-light"));
+      if (!lucesHeader.length) return;
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        lucesHeader.forEach(l => l.classList.add("on"));
+        return;
+      }
+      lucesHeader.forEach(l => l.classList.remove("on"));
+      lucesHeader.forEach((l, i) => setTimeout(() => l.classList.add("on"), 700 * (i + 1)));
+    }
+    iniciarSecuenciaLuces();
 
     reloj();
     setInterval(reloj, 1000);     // reloj del header
