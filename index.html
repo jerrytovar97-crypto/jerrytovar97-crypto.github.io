@@ -209,18 +209,21 @@
     /* ===== Selector de banderas (tema por país) ===== */
     #tema-selector { flex-wrap: wrap; justify-content: center; max-width: 100%; }
     .tema-flag {
-      font-size: 1.1rem; line-height: 1;
-      background: none;
+      font-size: 1.25rem; line-height: 1;
+      background: rgba(0,0,0,0.35);
       border: 1px solid rgba(255,255,255,0.12);
       border-radius: 0.5rem;
-      padding: 0.15rem 0.3rem;
+      padding: 0.2rem 0.4rem;
       cursor: pointer;
-      transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+      opacity: 0.6;
+      transition: opacity 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.2s;
     }
-    .tema-flag:hover { transform: scale(1.1); }
+    .tema-flag:hover { transform: scale(1.12); opacity: 1; }
     .tema-flag.activa {
+      opacity: 1;
       border-color: var(--acento);
-      box-shadow: 0 0 8px var(--acento);
+      box-shadow: 0 0 10px var(--acento);
+      transform: scale(1.08);
     }
 
     /* Transición suave al refrescar tablas */
@@ -265,43 +268,50 @@
   <header data-hide-overlay class="w-full py-6 px-6 glass-dark border-b-2 border-red-600 sticky top-0 z-50 relative">
     <!-- Franja superior de acento: refleja el tema por país de forma sutil -->
     <div data-tema-franja class="absolute top-0 left-0 h-1 w-full" style="background:linear-gradient(90deg,var(--acento),var(--acento2))"></div>
-    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-      <!-- Marca + EN VIVO -->
-      <div class="flex items-center gap-4">
-        <span class="h-8 w-1.5 bg-red-600 rounded-full"></span>
-        <h1 class="text-2xl md:text-4xl font-black tracking-tight uppercase">
-          Paddock Club <span class="text-red-600">ES 🇪🇨</span>
-        </h1>
-        <span id="live-badge" class="hidden items-center gap-2 bg-red-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest">
-          <span class="live-dot h-2 w-2 bg-white rounded-full"></span> En vivo
-        </span>
+    <div class="max-w-7xl mx-auto flex flex-col gap-4">
+      <!-- Fila 1: marca (izq) · luces + reloj (der) -->
+      <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+        <!-- Marca + EN VIVO -->
+        <div class="flex items-center gap-4">
+          <span class="h-8 w-1.5 bg-red-600 rounded-full"></span>
+          <h1 class="text-2xl md:text-4xl font-black tracking-tight uppercase">
+            Paddock Club <span class="text-red-600">ES 🇪🇨</span>
+          </h1>
+          <span id="live-badge" class="hidden items-center gap-2 bg-red-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest">
+            <span class="live-dot h-2 w-2 bg-white rounded-full"></span> En vivo
+          </span>
+        </div>
+        <!-- Luces de salida + reloj -->
+        <div class="flex items-center gap-4">
+          <!-- Cinco luces de salida F1: la 1ª enlaza a Bienvenida, la 5ª a
+               Despedida; las del medio son decorativas -->
+          <nav aria-label="Navegación" class="flex items-center gap-3 md:gap-4 bg-black/50 border border-white/10 rounded-xl px-4 py-2">
+            <a href="bienvenida.html" aria-label="Ir a la pantalla de bienvenida" class="start-light on">
+              <span class="light"></span>
+            </a>
+            <span class="start-light on" aria-hidden="true"><span class="light"></span></span>
+            <span class="start-light on" aria-hidden="true"><span class="light"></span></span>
+            <span class="start-light on" aria-hidden="true"><span class="light"></span></span>
+            <a href="despedida.html" aria-label="Ir a la pantalla de despedida" class="start-light on">
+              <span class="light"></span>
+            </a>
+          </nav>
+          <span id="clock" class="text-sm font-bold tabular-nums text-gray-200 bg-black/40 px-3 py-1 rounded-lg border border-white/10"></span>
+        </div>
       </div>
-      <!-- Navegación + reloj -->
-      <div class="flex items-center gap-5">
-        <!-- Selector de banderas (tema por país): solo manual, no autoaplica.
-             Se oculta en overlay (data-hide-overlay) pero el tema persiste.
-             Se puebla dinámicamente desde la hoja Temas / respaldo. -->
-        <div id="tema-selector" data-hide-overlay aria-label="Tema por país" class="flex items-center gap-1"></div>
-        <!-- Cinco luces de salida F1 (todas encendidas): la 1ª enlaza a
-             Bienvenida y la 5ª a Despedida; las del medio son decorativas -->
-        <nav aria-label="Navegación" class="flex items-center gap-3 md:gap-4 bg-black/50 border border-white/10 rounded-xl px-4 py-2">
-          <a href="bienvenida.html" aria-label="Ir a la pantalla de bienvenida" class="start-light on">
-            <span class="light"></span>
-          </a>
-          <span class="start-light on" aria-hidden="true"><span class="light"></span></span>
-          <span class="start-light on" aria-hidden="true"><span class="light"></span></span>
-          <span class="start-light on" aria-hidden="true"><span class="light"></span></span>
-          <a href="despedida.html" aria-label="Ir a la pantalla de despedida" class="start-light on">
-            <span class="light"></span>
-          </a>
-        </nav>
-        <span id="clock" class="text-sm font-bold tabular-nums text-gray-200 bg-black/40 px-3 py-1 rounded-lg border border-white/10"></span>
+
+      <!-- Fila 2: selector de tema por país, en su propia línea centrada.
+           Solo manual (no autoaplica). Se oculta en overlay pero el tema
+           persiste. Se puebla desde la hoja Temas / respaldo. -->
+      <div data-hide-overlay class="flex items-center justify-center gap-2 border-t border-white/10 pt-3">
+        <span class="text-[11px] font-bold uppercase tracking-widest text-gray-500 shrink-0">Tema</span>
+        <div id="tema-selector" aria-label="Tema por país" class="flex items-center gap-1.5"></div>
       </div>
     </div>
   </header>
 
   <!-- ===================== BANNER "AHORA EN PISTA" ===================== -->
-  <div id="track-banner" class="hidden w-full bg-red-600 text-white text-center py-2 px-4 font-bold uppercase tracking-widest text-sm sticky top-[88px] z-40">
+  <div id="track-banner" class="hidden w-full bg-red-600 text-white text-center py-2 px-4 font-bold uppercase tracking-widest text-sm z-40">
     🏁 Ahora en pista: <span id="track-banner-name"></span>
   </div>
 
