@@ -20,12 +20,24 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
   <style>
+    /* ===== Tema por país (colores de la bandera del GP) =====
+       Por defecto = rojo F1. aplicarTema() reescribe estas variables en
+       document.documentElement.style. El cambio es SUTIL: solo tiñe el
+       fondo, la franja del header, las luces y algunos acentos; la mayoría
+       de textos/badges siguen en rojo F1 (clases Tailwind) por legibilidad. */
+    :root {
+      --acento:  #dc2626;   /* acento principal (rojo F1 por defecto) */
+      --acento2: #7f1010;   /* acento secundario (tono oscuro de las luces) */
+    }
+
     /* Fuente y fondo base Dark Mode Premium F1 */
     html { scroll-behavior: smooth; }
     body {
       font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
       background-color: #000;
-      /* Degradado sutil negro/gris + acento rojo tenue de fondo */
+      /* Degradado sutil negro/gris + acento rojo tenue de fondo.
+         aplicarTema() repinta este background-image con los colores del
+         tema (salvo en overlay, donde el fondo queda transparente). */
       background-image:
         radial-gradient(circle at 15% 10%, rgba(220, 38, 38, 0.18), transparent 40%),
         radial-gradient(circle at 85% 90%, rgba(220, 38, 38, 0.10), transparent 45%),
@@ -63,10 +75,10 @@
       body.overlay .glass-dark { background: rgba(0, 0, 0, 0.72); }
     }
 
-    /* Scrollbar oscura */
+    /* Scrollbar oscura (refleja el acento del tema) */
     ::-webkit-scrollbar { width: 10px; height: 10px; }
     ::-webkit-scrollbar-track { background: #0a0a0a; }
-    ::-webkit-scrollbar-thumb { background: #dc2626; border-radius: 8px; }
+    ::-webkit-scrollbar-thumb { background: var(--acento); border-radius: 8px; }
 
     /* Foco visible accesible */
     a:focus-visible, button:focus-visible {
@@ -111,9 +123,9 @@
     @media (min-width: 768px) {
       .start-light .light { width: 22px; height: 22px; }
     }
-    /* Luz encendida */
+    /* Luz encendida (refleja el tema de forma sutil vía variables) */
     .start-light.on .light {
-      background: radial-gradient(circle at 35% 30%, #ff6b6b, #dc2626 60%, #7f1010);
+      background: radial-gradient(circle at 35% 30%, #ff6b6b, var(--acento) 60%, var(--acento2));
       box-shadow: 0 0 10px rgba(220,38,38,0.8), inset 0 0 3px rgba(255,255,255,0.4);
     }
     /* Realce sutil al pasar el cursor sobre las luces-enlace */
@@ -121,6 +133,23 @@
     a.start-light:focus-visible .light {
       transform: scale(1.15);
       box-shadow: 0 0 16px rgba(220,38,38,1), inset 0 0 3px rgba(255,255,255,0.6);
+    }
+
+    /* ===== Selector de banderas (tema por país) ===== */
+    #tema-selector { flex-wrap: wrap; justify-content: center; max-width: 100%; }
+    .tema-flag {
+      font-size: 1.1rem; line-height: 1;
+      background: none;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 0.5rem;
+      padding: 0.15rem 0.3rem;
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+    }
+    .tema-flag:hover { transform: scale(1.1); }
+    .tema-flag.activa {
+      border-color: var(--acento);
+      box-shadow: 0 0 8px var(--acento);
     }
 
     /* Transición suave al refrescar tablas */
@@ -161,7 +190,9 @@
 <body class="min-h-screen text-white flex flex-col">
 
   <!-- ===================== HEADER ===================== -->
-  <header data-hide-overlay class="w-full py-6 px-6 glass-dark border-b-2 border-red-600 sticky top-0 z-50">
+  <header data-hide-overlay class="w-full py-6 px-6 glass-dark border-b-2 border-red-600 sticky top-0 z-50 relative">
+    <!-- Franja superior de acento: refleja el tema por país de forma sutil -->
+    <div data-tema-franja class="absolute top-0 left-0 h-1 w-full" style="background:linear-gradient(90deg,var(--acento),var(--acento2))"></div>
     <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
       <!-- Marca + EN VIVO -->
       <div class="flex items-center gap-4">
@@ -175,6 +206,10 @@
       </div>
       <!-- Navegación + reloj -->
       <div class="flex items-center gap-5">
+        <!-- Selector de banderas (tema por país): solo manual, no autoaplica.
+             Se oculta en overlay (data-hide-overlay) pero el tema persiste.
+             Se puebla dinámicamente desde la hoja Temas / respaldo. -->
+        <div id="tema-selector" data-hide-overlay aria-label="Tema por país" class="flex items-center gap-1"></div>
         <!-- Cinco luces de salida F1 (todas encendidas): la 1ª enlaza a
              Bienvenida y la 5ª a Despedida; las del medio son decorativas -->
         <nav aria-label="Navegación" class="flex items-center gap-3 md:gap-4 bg-black/50 border border-white/10 rounded-xl px-4 py-2">
@@ -217,17 +252,17 @@
             <span id="race-days" class="text-4xl sm:text-6xl md:text-7xl font-black text-white tabular-nums">00</span>
             <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Días</span>
           </div>
-          <span class="text-4xl sm:text-6xl md:text-7xl font-black text-red-600">:</span>
+          <span class="text-4xl sm:text-6xl md:text-7xl font-black text-red-600" style="color:var(--acento)">:</span>
           <div class="flex flex-col items-center">
             <span id="race-hours" class="text-4xl sm:text-6xl md:text-7xl font-black text-white tabular-nums">00</span>
             <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Horas</span>
           </div>
-          <span class="text-4xl sm:text-6xl md:text-7xl font-black text-red-600">:</span>
+          <span class="text-4xl sm:text-6xl md:text-7xl font-black text-red-600" style="color:var(--acento)">:</span>
           <div class="flex flex-col items-center">
             <span id="race-mins" class="text-4xl sm:text-6xl md:text-7xl font-black text-white tabular-nums">00</span>
             <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Min</span>
           </div>
-          <span class="text-4xl sm:text-6xl md:text-7xl font-black text-red-600">:</span>
+          <span class="text-4xl sm:text-6xl md:text-7xl font-black text-red-600" style="color:var(--acento)">:</span>
           <div class="flex flex-col items-center">
             <span id="race-secs" class="text-4xl sm:text-6xl md:text-7xl font-black text-red-600 tabular-nums">00</span>
             <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Seg</span>
@@ -397,8 +432,98 @@
     const CALENDAR_CSV_URL    = csv("54267116");   // Hoja Calendario (opcional)
     const GRID_CSV_URL        = csv("245017209");  // Hoja Grilla
 
+    // Hoja "Temas" (columnas: pais | bandera | color1 | color2).
+    // Déjala vacía hasta tener su CSV: con "" se usa el respaldo incrustado
+    // (TEMAS_FALLBACK) sin errores. Si se vacía, vuelve a usar el respaldo.
+    const TEMAS_CSV_URL = csv("120476195");  // Hoja Temas
+
     // Cada cuántos ms se vuelven a leer los Sheets (auto-refresh). 60000 = 1 min.
     const REFRESH_MS = 60000;
+
+    /* =========================================================
+       TEMA POR PAÍS (colores de la bandera del GP) — SOLO MANUAL
+       Mecanismo: variables CSS --acento / --acento2 en :root.
+       aplicarTema() las reescribe en document.documentElement.style y
+       repinta el fondo del body (salvo en overlay, donde queda transparente).
+       ========================================================= */
+    // Tema por defecto = rojo F1 (mismos valores que :root).
+    const TEMA_DEFECTO = { pais: "F1", bandera: "🏁", color1: "#dc2626", color2: "#7f1010" };
+
+    // Respaldo incrustado: funciona aunque la hoja Temas no esté configurada.
+    const TEMAS_FALLBACK = [
+      { pais: "México",      bandera: "🇲🇽", color1: "#006847", color2: "#ce1126" },
+      { pais: "Brasil",      bandera: "🇧🇷", color1: "#009c3b", color2: "#ffdf00" },
+      { pais: "España",      bandera: "🇪🇸", color1: "#aa151b", color2: "#f1bf00" },
+      { pais: "Italia",      bandera: "🇮🇹", color1: "#008c45", color2: "#cd212a" },
+      { pais: "Japón",       bandera: "🇯🇵", color1: "#bc002d", color2: "#ffffff" },
+      { pais: "Reino Unido", bandera: "🇬🇧", color1: "#012169", color2: "#c8102e" },
+      { pais: "EE.UU.",      bandera: "🇺🇸", color1: "#3c3b6e", color2: "#b22234" },
+    ];
+
+    // Normaliza el nombre del país para el parámetro ?tema= y para buscar.
+    // "EE.UU." -> "eeuu", "Reino Unido" -> "reinounido", "México" -> "mexico".
+    function normalizarPais(txt) {
+      return String(txt ?? "")
+        .toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")  // quita acentos
+        .replace(/[^a-z0-9]/g, "");                        // sin espacios ni puntos
+    }
+
+    // Valida un color hex (#rgb o #rrggbb).
+    function esHexValido(c) {
+      return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(c ?? "").trim());
+    }
+
+    // Convierte un hex (#rgb / #rrggbb) a rgba con alfa. Fallback al acento
+    // por defecto si el color es inválido.
+    function hexAlfa(hex, alfa) {
+      let h = String(hex ?? "").trim().replace("#", "");
+      if (h.length === 3) h = h.split("").map(c => c + c).join("");
+      if (!/^[0-9a-f]{6}$/i.test(h)) h = "dc2626";
+      const r = parseInt(h.slice(0, 2), 16);
+      const g = parseInt(h.slice(2, 4), 16);
+      const b = parseInt(h.slice(4, 6), 16);
+      return `rgba(${r}, ${g}, ${b}, ${alfa})`;
+    }
+
+    // Aplica el tema: setea las variables CSS y (si NO es overlay) repinta el
+    // fondo del body con los colores del país. Colores inválidos caen al
+    // valor por defecto correspondiente.
+    function aplicarTema(tema) {
+      const t = tema || TEMA_DEFECTO;
+      const c1 = esHexValido(t.color1) ? t.color1 : TEMA_DEFECTO.color1;
+      const c2 = esHexValido(t.color2) ? t.color2 : TEMA_DEFECTO.color2;
+      const raiz = document.documentElement.style;
+      raiz.setProperty("--acento", c1);
+      raiz.setProperty("--acento2", c2);
+
+      // Fondo: solo si el body NO está en overlay (en overlay queda transparente).
+      if (!document.body.classList.contains("overlay")) {
+        document.body.style.backgroundImage =
+          `radial-gradient(circle at 15% 10%, ${hexAlfa(c1, 0.18)}, transparent 40%),` +
+          `radial-gradient(circle at 85% 90%, ${hexAlfa(c2, 0.10)}, transparent 45%),` +
+          `linear-gradient(160deg, #0a0a0a 0%, #141414 100%)`;
+      } else {
+        document.body.style.backgroundImage = "";
+      }
+
+      // Mejora cosmética: color de la barra del navegador.
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute("content", c1);
+    }
+
+    // Resuelve el tema activo: ?tema= -> localStorage("f1tema") -> por defecto.
+    // Busca en `lista` por nombre de país normalizado.
+    function resolverTema(lista) {
+      const temas = Array.isArray(lista) && lista.length ? lista : TEMAS_FALLBACK;
+      let clave = normalizarPais(params.get("tema") || "");
+      if (!clave) {
+        try { clave = normalizarPais(localStorage.getItem("f1tema") || ""); }
+        catch (e) { clave = ""; }
+      }
+      if (!clave) return TEMA_DEFECTO;
+      return temas.find(t => normalizarPais(t.pais) === clave) || TEMA_DEFECTO;
+    }
 
     // Zona horaria para mostrar fechas/horas (todas las fechas del Sheet se
     // interpretan y muestran en esta zona, igual para toda la audiencia).
@@ -1050,6 +1175,64 @@
     }
 
     /* =========================================================
+       3e) SELECTOR DE BANDERAS + CARGA DE TEMAS
+       ========================================================= */
+    // Pinta la fila de banderas clicables en el header a partir de `lista`.
+    // Al hacer clic: aplica el tema, lo guarda en localStorage y actualiza
+    // el parámetro ?tema= en la URL conservando overlay/scene/autoscroll.
+    function construirSelector(lista) {
+      const cont = document.getElementById("tema-selector");
+      if (!cont) return;
+      const temas = Array.isArray(lista) && lista.length ? lista : TEMAS_FALLBACK;
+      cont.innerHTML = temas.map(t =>
+        `<button type="button" class="tema-flag" data-pais="${esc(normalizarPais(t.pais))}" title="${esc(t.pais)}" aria-label="Tema ${esc(t.pais)}">${esc(t.bandera || "🏁")}</button>`
+      ).join("");
+
+      const marcarActiva = (clave) => {
+        cont.querySelectorAll(".tema-flag").forEach(b =>
+          b.classList.toggle("activa", b.dataset.pais === clave)
+        );
+      };
+
+      cont.querySelectorAll(".tema-flag").forEach((btn, idx) => {
+        btn.addEventListener("click", () => {
+          const tema = temas[idx];
+          aplicarTema(tema);
+          try { localStorage.setItem("f1tema", tema.pais); } catch (e) { /* storage deshabilitado */ }
+          // Actualiza ?tema= sin perder los demás parámetros.
+          const url = new URL(location.href);
+          url.searchParams.set("tema", normalizarPais(tema.pais));
+          history.replaceState(null, "", url);
+          marcarActiva(normalizarPais(tema.pais));
+        });
+      });
+
+      // Marca la bandera del tema actualmente resuelto (URL/localStorage).
+      marcarActiva(normalizarPais(resolverTema(temas).pais));
+    }
+
+    // Carga la lista de temas: si TEMAS_CSV_URL está vacía usa el respaldo;
+    // si tiene valor, la lee con parseCSV (con su caché) mapeando las
+    // columnas pais|bandera|color1|color2 y cae al respaldo si viene vacía.
+    function cargarTemas(onReady) {
+      if (!TEMAS_CSV_URL) { onReady(TEMAS_FALLBACK.slice()); return; }
+      parseCSV(TEMAS_CSV_URL, function (filas) {
+        const temas = (filas || []).map(f => {
+          const v = Object.values(f);
+          return {
+            pais:    (f.pais    ?? v[0] ?? "").toString().trim(),
+            bandera: (f.bandera ?? v[1] ?? "🏁").toString().trim(),
+            color1:  (f.color1  ?? v[2] ?? "").toString().trim(),
+            color2:  (f.color2  ?? v[3] ?? "").toString().trim(),
+          };
+        }).filter(t => t.pais);
+        onReady(temas.length ? temas : TEMAS_FALLBACK.slice());
+      }, function () {
+        onReady(TEMAS_FALLBACK.slice());
+      });
+    }
+
+    /* =========================================================
        4) ARRANQUE + AUTO-REFRESH
        ========================================================= */
     let intervaloTick = null;
@@ -1071,6 +1254,14 @@
     }
 
     // Arranque
+    // Tema por país: resuelve ?tema=/localStorage/por-defecto y construye el
+    // selector. Aplica de inmediato con el respaldo para no esperar red.
+    aplicarTema(resolverTema(TEMAS_FALLBACK));
+    cargarTemas(lista => {
+      construirSelector(lista);
+      aplicarTema(resolverTema(lista));
+    });
+
     reloj();
     setInterval(reloj, 1000);     // reloj del header
     cargarTodo();

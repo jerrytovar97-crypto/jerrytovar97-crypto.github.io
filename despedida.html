@@ -14,6 +14,15 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
   <style>
+    /* ===== Tema por país (colores de la bandera del GP) =====
+       Por defecto = rojo F1. aplicarTema() reescribe estas variables.
+       Esta pantalla NO muestra selector: aplica el tema recibido por ?tema=
+       o localStorage("f1tema") (con respaldo incrustado y hoja Temas opcional). */
+    :root {
+      --acento:  #dc2626;
+      --acento2: #7f1010;
+    }
+
     html { scroll-behavior: smooth; }
     body {
       font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -49,6 +58,8 @@
       background-image: repeating-linear-gradient(90deg,#fff 0 12px,#000 12px 24px);
       background-size: 24px 12px;
       animation: slideFlag 2s linear infinite;
+      /* Borde de acento sutil: refleja el tema por país sin romper los cuadros */
+      box-shadow: inset 0 0 0 1px var(--acento);
     }
 
     /* Pulso del segundero */
@@ -58,7 +69,7 @@
     /* ===== Bandera a cuadros ondeando (fin de carrera) ===== */
     .checkered-flag {
       width: 150px; height: 100px;
-      border: 3px solid rgba(255,255,255,0.25);
+      border: 3px solid var(--acento);   /* borde de acento (refleja el tema) */
       border-radius: 6px;
       background-image:
         repeating-conic-gradient(#fff 0% 25%, #000 0% 50%);
@@ -123,17 +134,17 @@
           <span id="d" class="text-5xl sm:text-7xl md:text-8xl font-black text-white tabular-nums">00</span>
           <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Días</span>
         </div>
-        <span class="text-5xl sm:text-7xl md:text-8xl font-black text-red-600">:</span>
+        <span class="text-5xl sm:text-7xl md:text-8xl font-black text-red-600" style="color:var(--acento)">:</span>
         <div class="flex flex-col items-center">
           <span id="h" class="text-5xl sm:text-7xl md:text-8xl font-black text-white tabular-nums">00</span>
           <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Horas</span>
         </div>
-        <span class="text-5xl sm:text-7xl md:text-8xl font-black text-red-600">:</span>
+        <span class="text-5xl sm:text-7xl md:text-8xl font-black text-red-600" style="color:var(--acento)">:</span>
         <div class="flex flex-col items-center">
           <span id="m" class="text-5xl sm:text-7xl md:text-8xl font-black text-white tabular-nums">00</span>
           <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Min</span>
         </div>
-        <span class="text-5xl sm:text-7xl md:text-8xl font-black text-red-600">:</span>
+        <span class="text-5xl sm:text-7xl md:text-8xl font-black text-red-600" style="color:var(--acento)">:</span>
         <div class="flex flex-col items-center">
           <span id="s" class="text-5xl sm:text-7xl md:text-8xl font-black text-red-600 tabular-nums">00</span>
           <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Seg</span>
@@ -179,11 +190,114 @@
       "🏎️ Paddock Club ES",
       "🔔 Vuelve para el próximo Gran Premio",
       "💬 Gracias por ver y comentar",
+      "📊 Portal de datos siempre disponible",
     ];
+
+    // Hoja "Temas" (columnas: pais | bandera | color1 | color2).
+    const TEMAS_CSV_URL = `${BASE}?gid=120476195&single=true&output=csv`;  // Hoja Temas
 
     /* --------------------------------------------------------- */
     const params = new URLSearchParams(location.search);
     if (params.get("overlay") === "1") document.body.classList.add("overlay");
+
+    /* =========================================================
+       TEMA POR PAÍS (colores de la bandera del GP)
+       Esta pantalla no muestra selector: aplica el tema recibido por ?tema=
+       o localStorage("f1tema"). Puede leer la hoja Temas (opcional) con
+       respaldo incrustado. Helpers idénticos al contrato compartido.
+       ========================================================= */
+    // Escapa texto del CSV (no existe en este archivo; se añade local).
+    function esc(txt) {
+      return String(txt ?? "").replace(/[&<>"']/g, c => (
+        { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+      ));
+    }
+
+    const TEMA_DEFECTO = { pais: "F1", bandera: "🏁", color1: "#dc2626", color2: "#7f1010" };
+
+    const TEMAS_FALLBACK = [
+      { pais: "México",      bandera: "🇲🇽", color1: "#006847", color2: "#ce1126" },
+      { pais: "Brasil",      bandera: "🇧🇷", color1: "#009c3b", color2: "#ffdf00" },
+      { pais: "España",      bandera: "🇪🇸", color1: "#aa151b", color2: "#f1bf00" },
+      { pais: "Italia",      bandera: "🇮🇹", color1: "#008c45", color2: "#cd212a" },
+      { pais: "Japón",       bandera: "🇯🇵", color1: "#bc002d", color2: "#ffffff" },
+      { pais: "Reino Unido", bandera: "🇬🇧", color1: "#012169", color2: "#c8102e" },
+      { pais: "EE.UU.",      bandera: "🇺🇸", color1: "#3c3b6e", color2: "#b22234" },
+    ];
+
+    function normalizarPais(txt) {
+      return String(txt ?? "")
+        .toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]/g, "");
+    }
+    function esHexValido(c) {
+      return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(c ?? "").trim());
+    }
+    function hexAlfa(hex, alfa) {
+      let h = String(hex ?? "").trim().replace("#", "");
+      if (h.length === 3) h = h.split("").map(c => c + c).join("");
+      if (!/^[0-9a-f]{6}$/i.test(h)) h = "dc2626";
+      const r = parseInt(h.slice(0, 2), 16);
+      const g = parseInt(h.slice(2, 4), 16);
+      const b = parseInt(h.slice(4, 6), 16);
+      return `rgba(${r}, ${g}, ${b}, ${alfa})`;
+    }
+    function aplicarTema(tema) {
+      const t = tema || TEMA_DEFECTO;
+      const c1 = esHexValido(t.color1) ? t.color1 : TEMA_DEFECTO.color1;
+      const c2 = esHexValido(t.color2) ? t.color2 : TEMA_DEFECTO.color2;
+      const raiz = document.documentElement.style;
+      raiz.setProperty("--acento", c1);
+      raiz.setProperty("--acento2", c2);
+      if (!document.body.classList.contains("overlay")) {
+        document.body.style.backgroundImage =
+          `radial-gradient(circle at 15% 10%, ${hexAlfa(c1, 0.20)}, transparent 42%),` +
+          `radial-gradient(circle at 85% 90%, ${hexAlfa(c2, 0.12)}, transparent 46%),` +
+          `linear-gradient(160deg, #0a0a0a 0%, #141414 100%)`;
+      } else {
+        document.body.style.backgroundImage = "";
+      }
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute("content", c1);
+    }
+    function resolverTema(lista) {
+      const temas = Array.isArray(lista) && lista.length ? lista : TEMAS_FALLBACK;
+      let clave = normalizarPais(params.get("tema") || "");
+      if (!clave) {
+        try { clave = normalizarPais(localStorage.getItem("f1tema") || ""); }
+        catch (e) { clave = ""; }
+      }
+      if (!clave) return TEMA_DEFECTO;
+      return temas.find(t => normalizarPais(t.pais) === clave) || TEMA_DEFECTO;
+    }
+
+    // Carga opcional de la hoja Temas (mismo patrón que cargarGP). Si la URL
+    // está vacía o falla, usa el respaldo incrustado.
+    function cargarTemas(onReady) {
+      if (!TEMAS_CSV_URL) { onReady(TEMAS_FALLBACK.slice()); return; }
+      Papa.parse(TEMAS_CSV_URL, {
+        download: true, header: true, skipEmptyLines: true,
+        complete: function (r) {
+          const temas = (r.data || []).map(f => {
+            const v = Object.values(f);
+            return {
+              pais:    (f.pais    ?? v[0] ?? "").toString().trim(),
+              bandera: (f.bandera ?? v[1] ?? "🏁").toString().trim(),
+              color1:  (f.color1  ?? v[2] ?? "").toString().trim(),
+              color2:  (f.color2  ?? v[3] ?? "").toString().trim(),
+            };
+          }).filter(t => t.pais);
+          onReady(temas.length ? temas : TEMAS_FALLBACK.slice());
+        },
+        error: function () { onReady(TEMAS_FALLBACK.slice()); }
+      });
+    }
+
+    // Aplica de inmediato el tema de URL/localStorage (sin esperar red);
+    // luego, si hay hoja Temas, se reaplica cuando llegue.
+    aplicarTema(resolverTema(TEMAS_FALLBACK));
+    cargarTemas(lista => aplicarTema(resolverTema(lista)));
 
     // Ticker
     (function () {
