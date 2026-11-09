@@ -317,6 +317,19 @@
   <!-- ===================== CONTENIDO ===================== -->
   <main class="flex-1 w-full max-w-7xl mx-auto px-4 md:px-6 py-10 space-y-10">
 
+    <!-- ========== SECCIÓN HORARIO DEL FIN DE SEMANA ========== -->
+    <section id="horario" data-overlay class="is-block glass rounded-2xl p-6 md:p-8 scroll-mt-28">
+      <h3 class="text-xl md:text-2xl font-bold uppercase mb-6 flex items-center gap-3">
+        <span class="h-6 w-1 bg-red-600 rounded-full"></span>
+        Horario del Fin de Semana
+      </h3>
+
+      <!-- Las tarjetas de sesión se generan dinámicamente desde la hoja "Horario" -->
+      <div id="schedule-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div class="col-span-full py-6 text-center text-gray-500 animate-pulse">Cargando horario…</div>
+      </div>
+    </section>
+
     <!-- ========== CONTADOR + CAMPEONES + PODIOS ========== -->
     <section id="proxima-carrera" data-overlay class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch scroll-mt-28">
 
@@ -426,19 +439,6 @@
         <div id="grid-body-b" class="min-w-0 space-y-1.5 mt-5">
           <div class="py-6 text-center text-gray-500 animate-pulse">Cargando grilla…</div>
         </div>
-      </div>
-    </section>
-
-    <!-- ========== SECCIÓN HORARIO DEL FIN DE SEMANA ========== -->
-    <section id="horario" data-overlay class="is-block glass rounded-2xl p-6 md:p-8 scroll-mt-28">
-      <h3 class="text-xl md:text-2xl font-bold uppercase mb-6 flex items-center gap-3">
-        <span class="h-6 w-1 bg-red-600 rounded-full"></span>
-        Horario del Fin de Semana
-      </h3>
-
-      <!-- Las tarjetas de sesión se generan dinámicamente desde la hoja "Horario" -->
-      <div id="schedule-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div class="col-span-full py-6 text-center text-gray-500 animate-pulse">Cargando horario…</div>
       </div>
     </section>
 
@@ -1368,7 +1368,7 @@
        ========================================================= */
     function iniciarAutoScroll() {
       if (!AUTOSCROLL) return;
-      const ids = ["proxima-carrera", "podios", "grilla", "horario", "clasificaciones", "calendario"];
+      const ids = ["horario", "proxima-carrera", "grilla", "clasificaciones", "calendario"];
       let i = 0;
       setInterval(() => {
         i = (i + 1) % ids.length;
