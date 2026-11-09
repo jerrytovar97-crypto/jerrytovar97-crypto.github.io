@@ -194,9 +194,9 @@
     @media (min-width: 768px) {
       .start-light .light { width: 22px; height: 22px; }
     }
-    /* Luz encendida (refleja el tema de forma sutil vía variables) */
+    /* Luz encendida: ROJO F1 fijo (no depende del tema por país) */
     .start-light.on .light {
-      background: radial-gradient(circle at 35% 30%, #ff6b6b, var(--acento) 60%, var(--acento2));
+      background: radial-gradient(circle at 35% 30%, #ff6b6b, #dc2626 60%, #7f1010);
       box-shadow: 0 0 10px rgba(220,38,38,0.8), inset 0 0 3px rgba(255,255,255,0.4);
     }
     /* Realce sutil al pasar el cursor sobre las luces-enlace */
@@ -209,11 +209,11 @@
     /* ===== Selector de banderas (tema por país) ===== */
     #tema-selector { flex-wrap: wrap; justify-content: center; max-width: 100%; }
     .tema-flag {
-      font-size: 1.25rem; line-height: 1;
+      font-size: 0.95rem; line-height: 1;
       background: rgba(0,0,0,0.35);
       border: 1px solid rgba(255,255,255,0.12);
       border-radius: 0.5rem;
-      padding: 0.2rem 0.4rem;
+      padding: 0.1rem 0.3rem;
       cursor: pointer;
       opacity: 0.6;
       transition: opacity 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.2s;
@@ -265,47 +265,46 @@
 <body class="min-h-screen text-white flex flex-col">
 
   <!-- ===================== HEADER ===================== -->
-  <header data-hide-overlay class="w-full py-6 px-6 glass-dark border-b-2 border-red-600 sticky top-0 z-50 relative">
+  <header data-hide-overlay class="w-full py-3 px-6 glass-dark border-b-2 border-red-600 sticky top-0 z-50 relative">
     <!-- Franja superior de acento: refleja el tema por país de forma sutil -->
     <div data-tema-franja class="absolute top-0 left-0 h-1 w-full" style="background:linear-gradient(90deg,var(--acento),var(--acento2))"></div>
-    <div class="max-w-7xl mx-auto flex flex-col gap-4">
-      <!-- Fila 1: marca (izq) · luces + reloj (der) -->
-      <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+    <div class="max-w-7xl mx-auto flex flex-col gap-2">
+      <!-- Fila principal: marca (izq) · luces (centro) · reloj (der) -->
+      <div class="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-3">
         <!-- Marca + EN VIVO -->
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-3 justify-center md:justify-start">
           <span class="h-8 w-1.5 bg-red-600 rounded-full"></span>
-          <h1 class="text-2xl md:text-4xl font-black tracking-tight uppercase">
+          <h1 class="text-2xl md:text-3xl font-black tracking-tight uppercase whitespace-nowrap">
             Paddock Club <span class="text-red-600">ES 🇪🇨</span>
           </h1>
           <span id="live-badge" class="hidden items-center gap-2 bg-red-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest">
             <span class="live-dot h-2 w-2 bg-white rounded-full"></span> En vivo
           </span>
         </div>
-        <!-- Luces de salida + reloj -->
-        <div class="flex items-center gap-4">
-          <!-- Cinco luces de salida F1: la 1ª enlaza a Bienvenida, la 5ª a
-               Despedida; las del medio son decorativas -->
-          <nav aria-label="Navegación" class="flex items-center gap-3 md:gap-4 bg-black/50 border border-white/10 rounded-xl px-4 py-2">
-            <a href="bienvenida.html" aria-label="Ir a la pantalla de bienvenida" class="start-light on">
-              <span class="light"></span>
-            </a>
-            <span class="start-light on" aria-hidden="true"><span class="light"></span></span>
-            <span class="start-light on" aria-hidden="true"><span class="light"></span></span>
-            <span class="start-light on" aria-hidden="true"><span class="light"></span></span>
-            <a href="despedida.html" aria-label="Ir a la pantalla de despedida" class="start-light on">
-              <span class="light"></span>
-            </a>
-          </nav>
-          <span id="clock" class="text-sm font-bold tabular-nums text-gray-200 bg-black/40 px-3 py-1 rounded-lg border border-white/10"></span>
+        <!-- Cinco luces de salida F1 (rojas, en bucle): la 1ª enlaza a Bienvenida,
+             la 5ª a Despedida; las del medio son decorativas -->
+        <nav aria-label="Navegación" class="flex items-center justify-self-center gap-3 md:gap-4 bg-black/50 border border-white/10 rounded-xl px-4 py-2">
+          <a href="bienvenida.html" aria-label="Ir a la pantalla de bienvenida" class="start-light on">
+            <span class="light"></span>
+          </a>
+          <span class="start-light on" aria-hidden="true"><span class="light"></span></span>
+          <span class="start-light on" aria-hidden="true"><span class="light"></span></span>
+          <span class="start-light on" aria-hidden="true"><span class="light"></span></span>
+          <a href="despedida.html" aria-label="Ir a la pantalla de despedida" class="start-light on">
+            <span class="light"></span>
+          </a>
+        </nav>
+        <!-- Reloj -->
+        <div class="flex justify-center md:justify-end">
+          <span id="clock" class="text-sm md:text-base font-bold tabular-nums text-gray-200 bg-black/40 px-3 py-1 rounded-lg border border-white/10"></span>
         </div>
       </div>
 
-      <!-- Fila 2: selector de tema por país, en su propia línea centrada.
-           Solo manual (no autoaplica). Se oculta en overlay pero el tema
-           persiste. Se puebla desde la hoja Temas / respaldo. -->
-      <div data-hide-overlay class="flex items-center justify-center gap-2 border-t border-white/10 pt-3">
-        <span class="text-[11px] font-bold uppercase tracking-widest text-gray-500 shrink-0">Calendario</span>
-        <div id="tema-selector" aria-label="Tema por país" class="flex items-center gap-1.5"></div>
+      <!-- Selector de tema por país: compacto y discreto. Solo manual.
+           Se puebla desde la hoja Temas / respaldo. -->
+      <div data-hide-overlay class="flex items-center justify-center gap-2 opacity-80 hover:opacity-100 focus-within:opacity-100 transition-opacity">
+        <span class="text-[10px] font-bold uppercase tracking-widest text-gray-500 shrink-0">Tema</span>
+        <div id="tema-selector" aria-label="Tema por país" class="flex items-center gap-1"></div>
       </div>
     </div>
   </header>
@@ -318,44 +317,64 @@
   <!-- ===================== CONTENIDO ===================== -->
   <main class="flex-1 w-full max-w-7xl mx-auto px-4 md:px-6 py-10 space-y-10">
 
-    <!-- ========== CONTADOR + PODIOS (misma fila) ========== -->
-    <section id="proxima-carrera" data-overlay class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch scroll-mt-28">
+    <!-- ========== CONTADOR + CAMPEONES + PODIOS ========== -->
+    <section id="proxima-carrera" data-overlay class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch scroll-mt-28">
 
-      <!-- Contador (ocupa 2 de 3 columnas) -->
-      <div class="glass-dark glow-strong rounded-3xl p-8 md:p-10 text-center lg:col-span-2 flex flex-col justify-center">
-        <p class="text-red-600 font-bold uppercase tracking-[0.3em] text-sm mb-2">Próxima Carrera</p>
-        <h2 id="race-title" class="text-2xl md:text-4xl font-black uppercase mb-2">Gran Premio</h2>
+      <!-- Columna izquierda (2 de 3): contador compacto + dos recuadros de campeones -->
+      <div class="lg:col-span-2 flex flex-col gap-4">
+      <div class="glass-dark glow-strong rounded-3xl px-6 py-5 md:px-8 md:py-6 text-center flex flex-col justify-center">
+        <p class="text-red-600 font-bold uppercase tracking-[0.3em] text-xs mb-1">Próxima Carrera</p>
+        <h2 id="race-title" class="text-2xl md:text-3xl font-black uppercase mb-1">Gran Premio</h2>
         <!-- Circuito / datos del GP (opcionales desde la hoja Horario) -->
-        <p id="race-circuit" class="text-gray-400 text-sm mb-8"></p>
+        <p id="race-circuit" class="text-gray-400 text-sm mb-4"></p>
 
-        <!-- Countdown grande (aria-live para lectores de pantalla) -->
-        <div class="flex justify-center gap-3 sm:gap-4 md:gap-6" role="timer" aria-live="off" aria-label="Cuenta regresiva para la próxima carrera">
+        <!-- Countdown (aria-live para lectores de pantalla) -->
+        <div class="flex justify-center gap-3 sm:gap-4 md:gap-5" role="timer" aria-live="off" aria-label="Cuenta regresiva para la próxima carrera">
           <div class="flex flex-col items-center">
-            <span id="race-days" class="text-4xl sm:text-6xl md:text-7xl font-black text-white tabular-nums">00</span>
-            <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Días</span>
+            <span id="race-days" class="text-4xl sm:text-5xl md:text-6xl font-black text-white tabular-nums leading-none">00</span>
+            <span class="text-[10px] sm:text-xs uppercase tracking-widest text-gray-400 mt-1">Días</span>
           </div>
-          <span class="text-4xl sm:text-6xl md:text-7xl font-black text-red-600" style="color:var(--acento)">:</span>
+          <span class="text-4xl sm:text-5xl md:text-6xl font-black text-red-600 leading-none" style="color:var(--acento)">:</span>
           <div class="flex flex-col items-center">
-            <span id="race-hours" class="text-4xl sm:text-6xl md:text-7xl font-black text-white tabular-nums">00</span>
-            <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Horas</span>
+            <span id="race-hours" class="text-4xl sm:text-5xl md:text-6xl font-black text-white tabular-nums leading-none">00</span>
+            <span class="text-[10px] sm:text-xs uppercase tracking-widest text-gray-400 mt-1">Horas</span>
           </div>
-          <span class="text-4xl sm:text-6xl md:text-7xl font-black text-red-600" style="color:var(--acento)">:</span>
+          <span class="text-4xl sm:text-5xl md:text-6xl font-black text-red-600 leading-none" style="color:var(--acento)">:</span>
           <div class="flex flex-col items-center">
-            <span id="race-mins" class="text-4xl sm:text-6xl md:text-7xl font-black text-white tabular-nums">00</span>
-            <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Min</span>
+            <span id="race-mins" class="text-4xl sm:text-5xl md:text-6xl font-black text-white tabular-nums leading-none">00</span>
+            <span class="text-[10px] sm:text-xs uppercase tracking-widest text-gray-400 mt-1">Min</span>
           </div>
-          <span class="text-4xl sm:text-6xl md:text-7xl font-black text-red-600" style="color:var(--acento)">:</span>
+          <span class="text-4xl sm:text-5xl md:text-6xl font-black text-red-600 leading-none" style="color:var(--acento)">:</span>
           <div class="flex flex-col items-center">
-            <span id="race-secs" class="text-4xl sm:text-6xl md:text-7xl font-black text-red-600 tabular-nums">00</span>
-            <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Seg</span>
+            <span id="race-secs" class="text-4xl sm:text-5xl md:text-6xl font-black text-red-600 tabular-nums leading-none">00</span>
+            <span class="text-[10px] sm:text-xs uppercase tracking-widest text-gray-400 mt-1">Seg</span>
           </div>
         </div>
         <!-- Mensaje cuando la carrera está en curso / finalizada -->
-        <p id="race-status" class="mt-6 text-lg font-bold uppercase tracking-widest hidden"></p>
+        <p id="race-status" class="mt-4 text-lg font-bold uppercase tracking-widest hidden"></p>
+      </div>
+
+      <!-- Campeones actuales (líderes de las hojas Pilotos y Equipos) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="glass rounded-2xl p-4">
+          <p class="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-2 flex items-center gap-2">
+            <span class="h-3 w-1 bg-red-600 rounded-full"></span>
+            Campeón actual de pilotos
+          </p>
+          <div id="campeon-piloto" class="text-gray-500 text-xl font-bold">—</div>
+        </div>
+        <div class="glass rounded-2xl p-4">
+          <p class="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-2 flex items-center gap-2">
+            <span class="h-3 w-1 bg-red-600 rounded-full"></span>
+            Campeón actual de constructores
+          </p>
+          <div id="campeon-constructor" class="text-gray-500 text-xl font-bold">—</div>
+        </div>
+      </div>
       </div>
 
       <!-- Podios compactos (1 columna, apilados al lado del contador) -->
-      <div id="podios" class="flex flex-col gap-6">
+      <div id="podios" class="flex flex-col gap-4">
         <!-- Podio última carrera -->
         <div class="glass rounded-2xl p-4 md:p-5 flex-1">
           <h3 class="text-sm font-bold uppercase mb-3 flex items-center gap-2 flex-wrap">
@@ -381,24 +400,36 @@
       </div>
     </section>
 
-    <!-- ========== GRILLA DE PARTIDA (horizontal, zigzag) ========== -->
-    <section id="grilla" data-overlay class="is-block glass rounded-2xl p-6 md:p-8 scroll-mt-28">
-      <h3 class="text-xl md:text-2xl font-bold uppercase mb-6 flex items-center gap-3 flex-wrap">
-        <span class="h-6 w-1 bg-red-600 rounded-full"></span>
-        Grilla de Partida
-        <span id="grid-gp" class="text-sm font-normal text-gray-400 normal-case"></span>
-      </h3>
-
-      <!-- Pista horizontal: salida a la izquierda, se avanza a la derecha.
-           Dos filas escalonadas (zigzag). Cajones compactos para que los
-           20 pilotos quepan sin scroll al proyectar en Streamlabs. -->
-      <div class="flex items-stretch">
-        <!-- Línea de salida (meta a cuadros, vertical) -->
-        <div class="w-2 rounded-l mr-3 shrink-0"
-             style="background-image: repeating-linear-gradient(0deg,#fff 0 8px,#000 8px 16px); background-size: 8px 16px;"></div>
-        <!-- Las posiciones se generan dinámicamente (dos filas zigzag) -->
-        <div id="grid-body" class="flex-1 grid grid-rows-2 grid-flow-col auto-cols-fr gap-x-1.5 gap-y-3">
-          <div class="row-span-2 py-6 text-center text-gray-500 animate-pulse">Cargando grilla…</div>
+    <!-- ========== GRILLA DE PARTIDA (dos recuadros: P1–P10 y P11–P22) ========== -->
+    <section id="grilla" data-overlay class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start scroll-mt-28">
+      <!-- Recuadro A: P1–P10 -->
+      <div class="glass rounded-2xl p-5">
+        <h3 class="text-xl font-bold uppercase mb-3 flex items-center gap-3 flex-wrap">
+          <span class="h-6 w-1 bg-red-600 rounded-full"></span>
+          Grilla · P1–P10
+          <span id="grid-gp" class="text-sm font-normal text-gray-400 normal-case"></span>
+        </h3>
+        <div class="flex items-stretch">
+          <!-- Línea de salida (meta a cuadros, vertical) -->
+          <div class="w-2 rounded-l mr-3 shrink-0"
+               style="background-image: repeating-linear-gradient(0deg,#fff 0 8px,#000 8px 16px); background-size: 8px 16px;"></div>
+          <div id="grid-body-a" class="flex-1 min-w-0 space-y-1.5">
+            <div class="py-6 text-center text-gray-500 animate-pulse">Cargando grilla…</div>
+          </div>
+        </div>
+      </div>
+      <!-- Recuadro B: P11–P22 -->
+      <div class="glass rounded-2xl p-5">
+        <h3 class="text-xl font-bold uppercase mb-3 flex items-center gap-3 flex-wrap">
+          <span class="h-6 w-1 bg-red-600 rounded-full"></span>
+          Grilla · P11–P22
+        </h3>
+        <div class="flex items-stretch">
+          <div class="w-2 rounded-l mr-3 shrink-0"
+               style="background-image: repeating-linear-gradient(0deg,#fff 0 8px,#000 8px 16px); background-size: 8px 16px;"></div>
+          <div id="grid-body-b" class="flex-1 min-w-0 space-y-1.5">
+            <div class="py-6 text-center text-gray-500 animate-pulse">Cargando grilla…</div>
+          </div>
         </div>
       </div>
     </section>
@@ -738,6 +769,31 @@
        Pilotos: #, Nombre, Equipo, Puntos  (+ Gap calculado)
        Equipos: #, Nombre, Puntos
        ========================================================= */
+    // Rellena el recuadro de campeón con la 1ª fila (líder) de Pilotos/Equipos.
+    // Reutiliza los datos que ya descarga cargarTabla (sin peticiones extra).
+    // Sin datos (null) muestra "—".
+    function pintarCampeon(esPiloto, f) {
+      const el = document.getElementById(esPiloto ? "campeon-piloto" : "campeon-constructor");
+      if (!el) return;
+      if (!f) { el.innerHTML = "—"; return; }
+      const v = Object.values(f);
+      const nombre = esc(f.Nombre ?? f.nombre ?? v[1] ?? "—");
+      const equipo = esPiloto ? esc(f.Equipo ?? f.equipo ?? v[2] ?? "") : "";
+      const puntos = Number(f.Puntos ?? f.puntos ?? v[esPiloto ? 3 : 2] ?? 0) || 0;
+      const color  = colorEquipo(esPiloto ? equipo : nombre);
+      el.innerHTML = `
+        <div class="flex items-center gap-3">
+          <span class="team-bar self-stretch" style="background:${color}"></span>
+          <div class="flex-1 min-w-0">
+            <p class="text-white font-black text-xl md:text-2xl leading-tight truncate">${nombre}</p>
+            ${esPiloto ? `<p class="text-gray-300 text-sm truncate">${equipo || "—"}</p>` : ""}
+            <p class="text-red-500 font-bold text-sm tabular-nums">${puntos} pts</p>
+          </div>
+          <span class="text-3xl shrink-0" title="Campeón actual" aria-hidden="true">👑</span>
+        </div>`;
+      fade(el);
+    }
+
     function cargarTabla(url, tbodyId, conEquipo, selloId) {
       const tbody = document.getElementById(tbodyId);
       const cols  = conEquipo ? 5 : 3;
@@ -745,14 +801,17 @@
       if (!url) {
         tbody.innerHTML = `<tr><td colspan="${cols}" class="py-6 text-center text-gray-500">
           Configura la URL del CSV en el script.</td></tr>`;
+        pintarCampeon(conEquipo, null);
         return;
       }
 
       parseCSV(url, function (filas, info) {
           if (!filas.length) {
             tbody.innerHTML = `<tr><td colspan="${cols}" class="py-6 text-center text-gray-500">Sin datos.</td></tr>`;
+            pintarCampeon(conEquipo, null);
             return;
           }
+          pintarCampeon(conEquipo, filas[0]); // líder = campeón actual
 
           // Puntos del líder (fila 1) para calcular el gap en Pilotos
           const puntosLider = Number(
@@ -807,6 +866,7 @@
           fade(tbody);
           sello(selloId, info);
         }, function () {
+          pintarCampeon(conEquipo, null);
           tbody.innerHTML = `<tr><td colspan="${cols}" class="py-8 text-center">
             <span class="block text-2xl mb-1">⚠️</span>
             <span class="text-red-500 font-semibold">No se pudieron cargar los datos.</span>
@@ -872,19 +932,23 @@
     /* =========================================================
        1c) GRILLA DE PARTIDA (hoja "Grilla")
        Columnas: pos | piloto | equipo   (opcional: gp)
-       Layout horizontal en zigzag (dos filas): impares arriba, pares
-       abajo adelantados. Cajones compactos para que quepan los 20
-       pilotos sin scroll al proyectar en Streamlabs.
+       Dos recuadros sin scroll: A = P1–P10 (10 primeros), B = el resto
+       (hasta 12 más, P11–P22). Si hay menos de 22 filas, B muestra las
+       que haya, sin rellenar con vacíos.
        ========================================================= */
-    function cargarGrilla(url, bodyId, gpLabelId) {
-      const body = document.getElementById(bodyId);
+    function cargarGrilla(url, bodyAId, bodyBId, gpLabelId) {
+      const bodyA = document.getElementById(bodyAId);
+      const bodyB = document.getElementById(bodyBId);
+      const msg = (txt) => `<div class="py-6 px-4 text-center text-gray-500">${txt}</div>`;
       if (!url) {
-        body.innerHTML = `<div class="row-span-2 py-6 px-4 text-center text-gray-500">Configura la URL del CSV (hoja Grilla).</div>`;
+        bodyA.innerHTML = msg("Configura la URL del CSV (hoja Grilla).");
+        bodyB.innerHTML = msg("—");
         return;
       }
       parseCSV(url, (filas) => {
         if (!filas.length) {
-          body.innerHTML = `<div class="row-span-2 py-6 px-4 text-center text-gray-500">Sin datos de grilla.</div>`;
+          bodyA.innerHTML = msg("Sin datos de grilla.");
+          bodyB.innerHTML = msg("—");
           return;
         }
         // Etiqueta del GP (opcional)
@@ -892,37 +956,35 @@
         const lbl = document.getElementById(gpLabelId);
         if (lbl) lbl.textContent = gp ? "· " + gp : "";
 
-        // grid-rows-2 + grid-flow-col: impares (P1,P3..) fila de arriba,
-        // pares (P2,P4..) fila de abajo. Cajón compacto en vertical:
-        // número grande arriba, piloto y equipo debajo.
-        body.innerHTML = filas.map((f, i) => {
+        // Fila compacta: P#, barra de escudería, piloto y equipo
+        const fila = (f, i) => {
           const v = Object.values(f);
           const pos    = esc(f.pos ?? f.Pos ?? v[0] ?? (i + 1));
           const piloto = esc(f.piloto ?? f.Piloto ?? v[1] ?? "—");
           const equipo = esc(f.equipo ?? f.Equipo ?? v[2] ?? "");
           const color  = colorEquipo(equipo);
-          const filaAbajo = i % 2 === 1;                 // zigzag: la de abajo se adelanta
-          const zig = filaAbajo ? "translate-x-2" : "";
-          const p1  = i === 0 ? "ring-2 ring-red-600 glow-strong" : "";
-          // Toma solo el apellido para ahorrar espacio (última palabra)
-          const corto = piloto.split(" ").slice(-1)[0];
+          const p1 = i === 0 ? "ring-2 ring-red-600 glow-strong" : "";
           return `
-            <div class="transform ${zig}">
-              <div class="relative rounded-md border border-white/10 bg-black/40 pt-1 pb-1.5 px-1 text-center overflow-hidden ${p1}">
-                <span class="absolute left-0 top-0 bottom-0 w-1" style="background:${color}"></span>
-                <p class="text-red-600 font-black text-sm leading-none tabular-nums">P${pos}</p>
-                <p class="text-white font-bold text-xs leading-tight truncate mt-0.5" title="${piloto}">${corto}</p>
-                <p class="text-gray-400 text-[10px] leading-tight truncate">${equipo}</p>
-              </div>
+            <div class="flex items-center gap-3 rounded-md border border-white/10 bg-black/40 px-3 py-1.5 ${p1}">
+              <span class="text-red-600 font-black text-base w-9 shrink-0 tabular-nums">P${pos}</span>
+              <span class="team-bar h-6 shrink-0" style="background:${color}"></span>
+              <span class="flex-1 min-w-0 text-white font-bold text-base leading-tight truncate" title="${piloto}">${piloto}</span>
+              <span class="text-gray-400 text-xs truncate max-w-[40%] text-right">${equipo}</span>
             </div>`;
-        }).join("");
-        fade(body);
+        };
+
+        const a = filas.slice(0, 10);
+        const b = filas.slice(10, 22);
+        bodyA.innerHTML = a.map((f, i) => fila(f, i)).join("");
+        bodyB.innerHTML = b.length ? b.map((f, i) => fila(f, i + 10)).join("") : msg("—");
+        fade(bodyA); fade(bodyB);
       }, () => {
-        body.innerHTML = `<div class="row-span-2 py-8 text-center">
+        bodyA.innerHTML = `<div class="py-8 text-center">
           <span class="block text-2xl mb-1">⚠️</span>
           <span class="text-red-500 font-semibold">No se pudo cargar la grilla.</span>
           <span class="block text-gray-500 text-xs mt-1">Revisa que la hoja esté publicada como CSV.</span>
         </div>`;
+        bodyB.innerHTML = msg("—");
       });
     }
 
@@ -1324,7 +1386,7 @@
       cargarTabla(TEAMS_CSV_URL,   "teams-body",   false, "teams-updated");
       cargarPodio(PODIUM_CSV_URL,      "podio-body",      "podio-gp");
       cargarPodio(PODIUM_HIST_CSV_URL, "podio-hist-body", "podio-hist-gp");
-      cargarGrilla(GRID_CSV_URL, "grid-body", "grid-gp");
+      cargarGrilla(GRID_CSV_URL, "grid-body-a", "grid-body-b", "grid-gp");
       cargarCalendario(CALENDAR_CSV_URL);
       cargarHorario(SCHEDULE_CSV_URL, function () {
         pintarTitulo();
@@ -1344,20 +1406,35 @@
       aplicarTema(resolverTema(lista));
     });
 
-    // Secuencia de luces de salida F1 al cargar (UNA sola pasada): las 5 parten
-    // apagadas y se encienden de una en una (~700ms); al terminar quedan todas
-    // encendidas (NO se apagan). Con reduce-motion se muestran encendidas de
-    // inmediato. El markup ya trae "on", así que si el JS no corre quedan
-    // encendidas igual (degradación segura) y la 1ª/5ª siguen siendo enlaces.
+    // Secuencia de luces de salida F1 en BUCLE (adaptada de bienvenida.html):
+    // se encienden de una en una (~1 s), con las 5 encendidas hay una pausa
+    // breve, se apagan todas de golpe, pausa corta y se repite. Con
+    // reduce-motion se muestran las 5 encendidas fijas. El markup ya trae
+    // "on" (degradación segura) y la 1ª/5ª siguen siendo enlaces <a>.
     function iniciarSecuenciaLuces() {
-      const lucesHeader = Array.from(document.querySelectorAll("header nav .start-light"));
-      if (!lucesHeader.length) return;
+      const luces = Array.from(document.querySelectorAll("header nav .start-light"));
+      if (!luces.length) return;
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        lucesHeader.forEach(l => l.classList.add("on"));
+        luces.forEach(l => l.classList.add("on"));
         return;
       }
-      lucesHeader.forEach(l => l.classList.remove("on"));
-      lucesHeader.forEach((l, i) => setTimeout(() => l.classList.add("on"), 700 * (i + 1)));
+      luces.forEach(l => l.classList.remove("on"));
+      let i = 0;
+      function paso() {
+        if (i < luces.length) {
+          luces[i].classList.add("on");   // enciende la siguiente
+          i++;
+          setTimeout(paso, 1000);
+        } else {
+          // Todas encendidas: pausa breve, apaga de golpe y reinicia
+          setTimeout(() => {
+            luces.forEach(l => l.classList.remove("on"));
+            i = 0;
+            setTimeout(paso, 1200);
+          }, 1000);
+        }
+      }
+      paso();
     }
     iniciarSecuenciaLuces();
 
