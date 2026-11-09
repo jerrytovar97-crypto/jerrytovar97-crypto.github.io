@@ -322,32 +322,34 @@
 
       <!-- Columna izquierda (2 de 3): contador compacto + dos recuadros de campeones -->
       <div class="lg:col-span-2 flex flex-col gap-4">
-      <div class="glass-dark glow-strong rounded-3xl px-6 py-5 md:px-8 md:py-6 text-center flex flex-col justify-center">
-        <p class="text-red-600 font-bold uppercase tracking-[0.3em] text-xs mb-1">Próxima Carrera</p>
-        <h2 id="race-title" class="text-2xl md:text-3xl font-black uppercase mb-1">Gran Premio</h2>
+      <!-- flex-1: el contador crece para llenar el alto libre y alinear su borde
+           inferior con el de los podios. rounded-2xl: mismo radio que las demás. -->
+      <div class="glass-dark glow-strong rounded-2xl px-6 py-6 md:px-8 md:py-8 text-center flex flex-col justify-center flex-1">
+        <p class="text-red-600 font-bold uppercase tracking-[0.3em] text-xs md:text-sm mb-2">Próxima Carrera</p>
+        <h2 id="race-title" class="text-3xl md:text-5xl font-black uppercase mb-2">Gran Premio</h2>
         <!-- Circuito / datos del GP (opcionales desde la hoja Horario) -->
-        <p id="race-circuit" class="text-gray-400 text-sm mb-4"></p>
+        <p id="race-circuit" class="text-gray-400 text-sm md:text-base mb-6"></p>
 
         <!-- Countdown (aria-live para lectores de pantalla) -->
-        <div class="flex justify-center gap-3 sm:gap-4 md:gap-5" role="timer" aria-live="off" aria-label="Cuenta regresiva para la próxima carrera">
+        <div class="flex justify-center gap-3 sm:gap-5 md:gap-7" role="timer" aria-live="off" aria-label="Cuenta regresiva para la próxima carrera">
           <div class="flex flex-col items-center">
-            <span id="race-days" class="text-4xl sm:text-5xl md:text-6xl font-black text-white tabular-nums leading-none">00</span>
-            <span class="text-[10px] sm:text-xs uppercase tracking-widest text-gray-400 mt-1">Días</span>
+            <span id="race-days" class="text-5xl sm:text-6xl md:text-8xl font-black text-white tabular-nums leading-none">00</span>
+            <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Días</span>
           </div>
-          <span class="text-4xl sm:text-5xl md:text-6xl font-black text-red-600 leading-none" style="color:var(--acento)">:</span>
+          <span class="text-5xl sm:text-6xl md:text-8xl font-black text-red-600 leading-none" style="color:var(--acento)">:</span>
           <div class="flex flex-col items-center">
-            <span id="race-hours" class="text-4xl sm:text-5xl md:text-6xl font-black text-white tabular-nums leading-none">00</span>
-            <span class="text-[10px] sm:text-xs uppercase tracking-widest text-gray-400 mt-1">Horas</span>
+            <span id="race-hours" class="text-5xl sm:text-6xl md:text-8xl font-black text-white tabular-nums leading-none">00</span>
+            <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Horas</span>
           </div>
-          <span class="text-4xl sm:text-5xl md:text-6xl font-black text-red-600 leading-none" style="color:var(--acento)">:</span>
+          <span class="text-5xl sm:text-6xl md:text-8xl font-black text-red-600 leading-none" style="color:var(--acento)">:</span>
           <div class="flex flex-col items-center">
-            <span id="race-mins" class="text-4xl sm:text-5xl md:text-6xl font-black text-white tabular-nums leading-none">00</span>
-            <span class="text-[10px] sm:text-xs uppercase tracking-widest text-gray-400 mt-1">Min</span>
+            <span id="race-mins" class="text-5xl sm:text-6xl md:text-8xl font-black text-white tabular-nums leading-none">00</span>
+            <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Min</span>
           </div>
-          <span class="text-4xl sm:text-5xl md:text-6xl font-black text-red-600 leading-none" style="color:var(--acento)">:</span>
+          <span class="text-5xl sm:text-6xl md:text-8xl font-black text-red-600 leading-none" style="color:var(--acento)">:</span>
           <div class="flex flex-col items-center">
-            <span id="race-secs" class="text-4xl sm:text-5xl md:text-6xl font-black text-red-600 tabular-nums leading-none">00</span>
-            <span class="text-[10px] sm:text-xs uppercase tracking-widest text-gray-400 mt-1">Seg</span>
+            <span id="race-secs" class="text-5xl sm:text-6xl md:text-8xl font-black text-red-600 tabular-nums leading-none">00</span>
+            <span class="text-[10px] sm:text-xs md:text-sm uppercase tracking-widest text-gray-400 mt-2">Seg</span>
           </div>
         </div>
         <!-- Mensaje cuando la carrera está en curso / finalizada -->
@@ -402,27 +404,24 @@
 
     <!-- ========== GRILLA DE PARTIDA (zigzag: A = posiciones impares, B = pares) ========== -->
     <section id="grilla" data-overlay class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start scroll-mt-28">
-      <!-- Recuadro A: fila izquierda (P1, P3 … P21). Línea de salida a cuadros arriba -->
+      <!-- Título único de la grilla; el GP se lee de la hoja Grilla (columna gp) -->
+      <h3 class="lg:col-span-2 text-xl md:text-2xl font-bold uppercase flex items-center gap-3 flex-wrap">
+        <span class="h-6 w-1 bg-red-600 rounded-full"></span>
+        Grilla de partida
+        <span id="grid-gp" class="text-sm md:text-base font-normal text-gray-400 normal-case"></span>
+      </h3>
+      <!-- Recuadro A: posiciones impares (P1, P3 … P21). Línea de salida a cuadros arriba -->
       <div class="glass rounded-2xl p-5 pt-0 overflow-hidden">
         <div class="h-3 -mx-5 mb-3 shrink-0" aria-hidden="true"
              style="background-image: repeating-linear-gradient(90deg,#fff 0 12px,#000 12px 24px);"></div>
-        <h3 class="text-xl font-bold uppercase mb-3 flex items-center gap-3 flex-wrap">
-          <span class="h-6 w-1 bg-red-600 rounded-full"></span>
-          Grilla · Izquierda (P1, P3 … P21)
-          <span id="grid-gp" class="text-sm font-normal text-gray-400 normal-case"></span>
-        </h3>
         <div id="grid-body-a" class="min-w-0 space-y-1.5">
           <div class="py-6 text-center text-gray-500 animate-pulse">Cargando grilla…</div>
         </div>
       </div>
-      <!-- Recuadro B: fila derecha (P2, P4 … P22), desplazada media casilla hacia abajo -->
+      <!-- Recuadro B: posiciones pares (P2, P4 … P22), desplazada media casilla hacia abajo -->
       <div class="glass rounded-2xl p-5 pt-0 overflow-hidden">
         <div class="h-3 -mx-5 mb-3 shrink-0" aria-hidden="true"
              style="background-image: repeating-linear-gradient(90deg,#fff 0 12px,#000 12px 24px);"></div>
-        <h3 class="text-xl font-bold uppercase mb-3 flex items-center gap-3 flex-wrap">
-          <span class="h-6 w-1 bg-red-600 rounded-full"></span>
-          Grilla · Derecha (P2, P4 … P22)
-        </h3>
         <!-- mt-5 (~media casilla): P2 queda un poco más atrás que P1 -->
         <div id="grid-body-b" class="min-w-0 space-y-1.5 mt-5">
           <div class="py-6 text-center text-gray-500 animate-pulse">Cargando grilla…</div>
