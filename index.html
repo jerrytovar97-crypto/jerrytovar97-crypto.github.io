@@ -402,13 +402,13 @@
 
     <!-- ========== GRILLA DE PARTIDA (zigzag: A = posiciones impares, B = pares) ========== -->
     <section id="grilla" data-overlay class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start scroll-mt-28">
-      <!-- Recuadro A: fila izquierda (P1, P3 … P11). Línea de salida a cuadros arriba -->
+      <!-- Recuadro A: fila izquierda (P1, P3 … P21). Línea de salida a cuadros arriba -->
       <div class="glass rounded-2xl p-5 pt-0 overflow-hidden">
         <div class="h-3 -mx-5 mb-3 shrink-0" aria-hidden="true"
              style="background-image: repeating-linear-gradient(90deg,#fff 0 12px,#000 12px 24px);"></div>
         <h3 class="text-xl font-bold uppercase mb-3 flex items-center gap-3 flex-wrap">
           <span class="h-6 w-1 bg-red-600 rounded-full"></span>
-          Grilla · Izquierda (P1, P3 … P11)
+          Grilla · Izquierda (P1, P3 … P21)
           <span id="grid-gp" class="text-sm font-normal text-gray-400 normal-case"></span>
         </h3>
         <div id="grid-body-a" class="min-w-0 space-y-1.5">
@@ -901,12 +901,12 @@
        1c) GRILLA DE PARTIDA (hoja "Grilla")
        Columnas: pos | piloto | equipo   (opcional: gp)
        Zigzag como en una parrilla real: recuadro A = posiciones IMPARES
-       (P1, P3 … hasta P11) y recuadro B = PARES (P2, P4 … hasta P22).
+       (P1, P3 … hasta P21) y recuadro B = PARES (P2, P4 … hasta P22).
        La paridad sale del número de posición (campo pos si es numérico;
        si no, índice+1), no del orden del array. Si hay menos filas, cada
        recuadro muestra las que haya, sin rellenar huecos.
        ========================================================= */
-    const GRID_A_MAX = 11;  // A: impares hasta P11
+    const GRID_A_MAX = 21;  // A: impares hasta P21
     const GRID_B_MAX = 22;  // B: pares hasta P22
 
     // Número de posición de una fila: pos numérico ("3" o "P3") o i+1.
