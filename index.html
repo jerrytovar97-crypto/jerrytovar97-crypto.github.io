@@ -303,7 +303,7 @@
       <!-- Selector de tema por país: compacto y discreto. Solo manual.
            Se puebla desde la hoja Temas / respaldo. -->
       <div data-hide-overlay class="flex items-center justify-center gap-2 opacity-80 hover:opacity-100 focus-within:opacity-100 transition-opacity">
-        <span class="text-[10px] font-bold uppercase tracking-widest text-gray-500 shrink-0">Tema</span>
+        <span class="text-[10px] font-bold uppercase tracking-widest text-gray-500 shrink-0">Calendario</span>
         <div id="tema-selector" aria-label="Tema por país" class="flex items-center gap-1"></div>
       </div>
     </div>
@@ -354,7 +354,7 @@
         <p id="race-status" class="mt-4 text-lg font-bold uppercase tracking-widest hidden"></p>
       </div>
 
-      <!-- Campeones actuales (líderes de las hojas Pilotos y Equipos) -->
+      <!-- Campeones actuales (hoja Campeones: tipo | nombre | equipo | detalle) -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div class="glass rounded-2xl p-4">
           <p class="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-2 flex items-center gap-2">
@@ -400,36 +400,32 @@
       </div>
     </section>
 
-    <!-- ========== GRILLA DE PARTIDA (dos recuadros: P1–P10 y P11–P22) ========== -->
+    <!-- ========== GRILLA DE PARTIDA (zigzag: A = posiciones impares, B = pares) ========== -->
     <section id="grilla" data-overlay class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start scroll-mt-28">
-      <!-- Recuadro A: P1–P10 -->
-      <div class="glass rounded-2xl p-5">
+      <!-- Recuadro A: fila izquierda (P1, P3 … P11). Línea de salida a cuadros arriba -->
+      <div class="glass rounded-2xl p-5 pt-0 overflow-hidden">
+        <div class="h-3 -mx-5 mb-3 shrink-0" aria-hidden="true"
+             style="background-image: repeating-linear-gradient(90deg,#fff 0 12px,#000 12px 24px);"></div>
         <h3 class="text-xl font-bold uppercase mb-3 flex items-center gap-3 flex-wrap">
           <span class="h-6 w-1 bg-red-600 rounded-full"></span>
-          Grilla · P1–P10
+          Grilla · Izquierda (P1, P3 … P11)
           <span id="grid-gp" class="text-sm font-normal text-gray-400 normal-case"></span>
         </h3>
-        <div class="flex items-stretch">
-          <!-- Línea de salida (meta a cuadros, vertical) -->
-          <div class="w-2 rounded-l mr-3 shrink-0"
-               style="background-image: repeating-linear-gradient(0deg,#fff 0 8px,#000 8px 16px); background-size: 8px 16px;"></div>
-          <div id="grid-body-a" class="flex-1 min-w-0 space-y-1.5">
-            <div class="py-6 text-center text-gray-500 animate-pulse">Cargando grilla…</div>
-          </div>
+        <div id="grid-body-a" class="min-w-0 space-y-1.5">
+          <div class="py-6 text-center text-gray-500 animate-pulse">Cargando grilla…</div>
         </div>
       </div>
-      <!-- Recuadro B: P11–P22 -->
-      <div class="glass rounded-2xl p-5">
+      <!-- Recuadro B: fila derecha (P2, P4 … P22), desplazada media casilla hacia abajo -->
+      <div class="glass rounded-2xl p-5 pt-0 overflow-hidden">
+        <div class="h-3 -mx-5 mb-3 shrink-0" aria-hidden="true"
+             style="background-image: repeating-linear-gradient(90deg,#fff 0 12px,#000 12px 24px);"></div>
         <h3 class="text-xl font-bold uppercase mb-3 flex items-center gap-3 flex-wrap">
           <span class="h-6 w-1 bg-red-600 rounded-full"></span>
-          Grilla · P11–P22
+          Grilla · Derecha (P2, P4 … P22)
         </h3>
-        <div class="flex items-stretch">
-          <div class="w-2 rounded-l mr-3 shrink-0"
-               style="background-image: repeating-linear-gradient(0deg,#fff 0 8px,#000 8px 16px); background-size: 8px 16px;"></div>
-          <div id="grid-body-b" class="flex-1 min-w-0 space-y-1.5">
-            <div class="py-6 text-center text-gray-500 animate-pulse">Cargando grilla…</div>
-          </div>
+        <!-- mt-5 (~media casilla): P2 queda un poco más atrás que P1 -->
+        <div id="grid-body-b" class="min-w-0 space-y-1.5 mt-5">
+          <div class="py-6 text-center text-gray-500 animate-pulse">Cargando grilla…</div>
         </div>
       </div>
     </section>
@@ -544,6 +540,7 @@
     const PODIUM_HIST_CSV_URL = csv("624793501");  // Hoja PodioHistorico
     const CALENDAR_CSV_URL    = csv("54267116");   // Hoja Calendario (opcional)
     const GRID_CSV_URL        = csv("245017209");  // Hoja Grilla
+    const CAMPEONES_CSV_URL   = csv("2000546675"); // Hoja Campeones
 
     // Hoja "Temas" (columnas: pais | bandera | color1 | color2).
     // Déjala vacía hasta tener su CSV: con "" se usa el respaldo incrustado
@@ -769,31 +766,6 @@
        Pilotos: #, Nombre, Equipo, Puntos  (+ Gap calculado)
        Equipos: #, Nombre, Puntos
        ========================================================= */
-    // Rellena el recuadro de campeón con la 1ª fila (líder) de Pilotos/Equipos.
-    // Reutiliza los datos que ya descarga cargarTabla (sin peticiones extra).
-    // Sin datos (null) muestra "—".
-    function pintarCampeon(esPiloto, f) {
-      const el = document.getElementById(esPiloto ? "campeon-piloto" : "campeon-constructor");
-      if (!el) return;
-      if (!f) { el.innerHTML = "—"; return; }
-      const v = Object.values(f);
-      const nombre = esc(f.Nombre ?? f.nombre ?? v[1] ?? "—");
-      const equipo = esPiloto ? esc(f.Equipo ?? f.equipo ?? v[2] ?? "") : "";
-      const puntos = Number(f.Puntos ?? f.puntos ?? v[esPiloto ? 3 : 2] ?? 0) || 0;
-      const color  = colorEquipo(esPiloto ? equipo : nombre);
-      el.innerHTML = `
-        <div class="flex items-center gap-3">
-          <span class="team-bar self-stretch" style="background:${color}"></span>
-          <div class="flex-1 min-w-0">
-            <p class="text-white font-black text-xl md:text-2xl leading-tight truncate">${nombre}</p>
-            ${esPiloto ? `<p class="text-gray-300 text-sm truncate">${equipo || "—"}</p>` : ""}
-            <p class="text-red-500 font-bold text-sm tabular-nums">${puntos} pts</p>
-          </div>
-          <span class="text-3xl shrink-0" title="Campeón actual" aria-hidden="true">👑</span>
-        </div>`;
-      fade(el);
-    }
-
     function cargarTabla(url, tbodyId, conEquipo, selloId) {
       const tbody = document.getElementById(tbodyId);
       const cols  = conEquipo ? 5 : 3;
@@ -801,17 +773,14 @@
       if (!url) {
         tbody.innerHTML = `<tr><td colspan="${cols}" class="py-6 text-center text-gray-500">
           Configura la URL del CSV en el script.</td></tr>`;
-        pintarCampeon(conEquipo, null);
         return;
       }
 
       parseCSV(url, function (filas, info) {
           if (!filas.length) {
             tbody.innerHTML = `<tr><td colspan="${cols}" class="py-6 text-center text-gray-500">Sin datos.</td></tr>`;
-            pintarCampeon(conEquipo, null);
             return;
           }
-          pintarCampeon(conEquipo, filas[0]); // líder = campeón actual
 
           // Puntos del líder (fila 1) para calcular el gap en Pilotos
           const puntosLider = Number(
@@ -866,7 +835,6 @@
           fade(tbody);
           sello(selloId, info);
         }, function () {
-          pintarCampeon(conEquipo, null);
           tbody.innerHTML = `<tr><td colspan="${cols}" class="py-8 text-center">
             <span class="block text-2xl mb-1">⚠️</span>
             <span class="text-red-500 font-semibold">No se pudieron cargar los datos.</span>
@@ -932,10 +900,31 @@
     /* =========================================================
        1c) GRILLA DE PARTIDA (hoja "Grilla")
        Columnas: pos | piloto | equipo   (opcional: gp)
-       Dos recuadros sin scroll: A = P1–P10 (10 primeros), B = el resto
-       (hasta 12 más, P11–P22). Si hay menos de 22 filas, B muestra las
-       que haya, sin rellenar con vacíos.
+       Zigzag como en una parrilla real: recuadro A = posiciones IMPARES
+       (P1, P3 … hasta P11) y recuadro B = PARES (P2, P4 … hasta P22).
+       La paridad sale del número de posición (campo pos si es numérico;
+       si no, índice+1), no del orden del array. Si hay menos filas, cada
+       recuadro muestra las que haya, sin rellenar huecos.
        ========================================================= */
+    const GRID_A_MAX = 11;  // A: impares hasta P11
+    const GRID_B_MAX = 22;  // B: pares hasta P22
+
+    // Número de posición de una fila: pos numérico ("3" o "P3") o i+1.
+    function posGrilla(f, i) {
+      const v = Object.values(f);
+      const m = String(f.pos ?? f.Pos ?? v[0] ?? "").trim().match(/^p?(\d+)$/i);
+      return m ? Number(m[1]) : i + 1;
+    }
+
+    // Reparte las filas en [impares ≤ GRID_A_MAX, pares ≤ GRID_B_MAX]
+    function repartirGrilla(filas) {
+      const items = filas.map((f, i) => ({ f, n: posGrilla(f, i) }));
+      return [
+        items.filter(x => x.n % 2 === 1 && x.n <= GRID_A_MAX),
+        items.filter(x => x.n % 2 === 0 && x.n <= GRID_B_MAX),
+      ];
+    }
+
     function cargarGrilla(url, bodyAId, bodyBId, gpLabelId) {
       const bodyA = document.getElementById(bodyAId);
       const bodyB = document.getElementById(bodyBId);
@@ -956,27 +945,25 @@
         const lbl = document.getElementById(gpLabelId);
         if (lbl) lbl.textContent = gp ? "· " + gp : "";
 
-        // Fila compacta: P#, barra de escudería, piloto y equipo
-        const fila = (f, i) => {
+        // Casilla compacta: P#, barra de escudería, piloto y equipo
+        const casilla = ({ f, n }) => {
           const v = Object.values(f);
-          const pos    = esc(f.pos ?? f.Pos ?? v[0] ?? (i + 1));
           const piloto = esc(f.piloto ?? f.Piloto ?? v[1] ?? "—");
           const equipo = esc(f.equipo ?? f.Equipo ?? v[2] ?? "");
           const color  = colorEquipo(equipo);
-          const p1 = i === 0 ? "ring-2 ring-red-600 glow-strong" : "";
+          const p1 = n === 1 ? "ring-2 ring-red-600 glow-strong" : "";
           return `
             <div class="flex items-center gap-3 rounded-md border border-white/10 bg-black/40 px-3 py-1.5 ${p1}">
-              <span class="text-red-600 font-black text-base w-9 shrink-0 tabular-nums">P${pos}</span>
+              <span class="text-red-600 font-black text-base w-9 shrink-0 tabular-nums">P${n}</span>
               <span class="team-bar h-6 shrink-0" style="background:${color}"></span>
               <span class="flex-1 min-w-0 text-white font-bold text-base leading-tight truncate" title="${piloto}">${piloto}</span>
               <span class="text-gray-400 text-xs truncate max-w-[40%] text-right">${equipo}</span>
             </div>`;
         };
 
-        const a = filas.slice(0, 10);
-        const b = filas.slice(10, 22);
-        bodyA.innerHTML = a.map((f, i) => fila(f, i)).join("");
-        bodyB.innerHTML = b.length ? b.map((f, i) => fila(f, i + 10)).join("") : msg("—");
+        const [a, b] = repartirGrilla(filas);
+        bodyA.innerHTML = a.length ? a.map(casilla).join("") : msg("—");
+        bodyB.innerHTML = b.length ? b.map(casilla).join("") : msg("—");
         fade(bodyA); fade(bodyB);
       }, () => {
         bodyA.innerHTML = `<div class="py-8 text-center">
@@ -986,6 +973,78 @@
         </div>`;
         bodyB.innerHTML = msg("—");
       });
+    }
+
+    /* =========================================================
+       1d) CAMPEONES ACTUALES (hoja "Campeones")
+       Columnas: tipo | nombre | equipo | detalle
+         - tipo   : contiene "piloto" o "constructor"/"equipo" (sin importar
+                    mayúsculas ni acentos).
+         - nombre : campeón.
+         - equipo : escudería (color de la barra; en constructores puede ir
+                    vacío y se usa el nombre).
+         - detalle: texto libre opcional (año, puntos…).
+       Sin columna tipo: fila 1 = pilotos, fila 2 = constructores.
+       ========================================================= */
+    function pintarCampeon(id, d) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (!d || !d.nombre) { el.textContent = "—"; return; }
+      const color = colorEquipo(d.equipo || d.nombre);
+      const sub = d.equipo && d.equipo !== d.nombre
+        ? `<p class="text-gray-300 text-sm truncate">${esc(d.equipo)}</p>` : "";
+      const det = d.detalle
+        ? `<p class="text-red-500 font-bold text-xs tabular-nums truncate">${esc(d.detalle)}</p>` : "";
+      el.innerHTML = `
+        <div class="flex items-center gap-3">
+          <span class="team-bar self-stretch" style="background:${color}"></span>
+          <div class="flex-1 min-w-0">
+            <p class="text-white font-black text-xl md:text-2xl leading-tight truncate">${esc(d.nombre)}</p>
+            ${sub}${det}
+          </div>
+          <span class="text-3xl shrink-0" title="Campeón actual" aria-hidden="true">👑</span>
+        </div>`;
+      fade(el);
+    }
+
+    // Extrae {pil, con} (cada uno { nombre, equipo, detalle } o null) de las filas
+    function extraerCampeones(filas) {
+      const norm = (t) => String(t ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+      const claves = (f) => { const o = {}; Object.keys(f).forEach(k => { o[norm(k)] = f[k]; }); return o; };
+      const esPil = (t) => norm(t).includes("piloto");
+      const esCon = (t) => /constructor|equipo/.test(norm(t));
+      if (!Array.isArray(filas) || !filas.length) return { pil: null, con: null };
+
+      const conTipo = "tipo" in claves(filas[0]) ||
+        (!("nombre" in claves(filas[0])) && filas.some(f => { const t = Object.values(f)[0]; return esPil(t) || esCon(t); }));
+      const off = conTipo ? 1 : 0;   // desplazamiento del respaldo por orden de columna
+      const dato = (f) => {
+        const k = claves(f), v = Object.values(f);
+        return {
+          tipo:    conTipo ? (k.tipo ?? v[0] ?? "") : "",
+          nombre:  String(k.nombre ?? v[off] ?? "").trim(),
+          equipo:  String(k.equipo ?? v[off + 1] ?? "").trim(),
+          detalle: String(k.detalle ?? v[off + 2] ?? "").trim(),
+        };
+      };
+      const datos = filas.map(dato);
+      let pil = null, con = null;
+      if (conTipo) {
+        pil = datos.find(d => esPil(d.tipo)) || null;
+        con = datos.find(d => esCon(d.tipo) && !esPil(d.tipo)) || null;
+      }
+      if (!conTipo || (!pil && !con)) { pil = datos[0] || null; con = datos[1] || null; }
+      return { pil, con };
+    }
+
+    function cargarCampeones(url) {
+      const vacio = () => { pintarCampeon("campeon-piloto", null); pintarCampeon("campeon-constructor", null); };
+      if (!url) { vacio(); return; }
+      parseCSV(url, (filas) => {
+        const { pil, con } = extraerCampeones(filas);
+        pintarCampeon("campeon-piloto", pil);
+        pintarCampeon("campeon-constructor", con);
+      }, vacio);
     }
 
     /* =========================================================
@@ -1387,6 +1446,7 @@
       cargarPodio(PODIUM_CSV_URL,      "podio-body",      "podio-gp");
       cargarPodio(PODIUM_HIST_CSV_URL, "podio-hist-body", "podio-hist-gp");
       cargarGrilla(GRID_CSV_URL, "grid-body-a", "grid-body-b", "grid-gp");
+      cargarCampeones(CAMPEONES_CSV_URL);
       cargarCalendario(CALENDAR_CSV_URL);
       cargarHorario(SCHEDULE_CSV_URL, function () {
         pintarTitulo();
