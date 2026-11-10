@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#dc2626" />
+  <meta name="description" content="Fin de semana y campeonato: pole, vuelta rápida, neumáticos, penalizaciones, puntos y escenario de título." />
+  <title>Fin de semana y campeonato · Paddock Club ES</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏎️</text></svg>" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800&family=Titillium+Web:wght@400;600;700;900&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS vía CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- PapaParse vía CDN para leer CSV desde Google Sheets -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+  <style>
+    :root {
+      --acento:  #dc2626;   /* acento principal (rojo F1 por defecto) */
+      --acento2: #7f1010;   /* acento secundario */
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Titillium Web', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: #000;
+      background-image:
+        radial-gradient(circle at 15% 10%, rgba(220, 38, 38, 0.18), transparent 40%),
+        radial-gradient(circle at 85% 90%, rgba(220, 38, 38, 0.10), transparent 45%),
+        linear-gradient(160deg, #0a0a0a 0%, #141414 100%);
+      background-attachment: fixed;
+      background-size: 200% 200%, 200% 200%, 100% 100%;
+      overflow-x: hidden;
+    }
+    h1, h2, h3, .f1-head {
+      font-family: 'Saira Condensed', 'Titillium Web', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+    h1, h2 { letter-spacing: -0.01em; }
+
+    .glass {
+      position: relative;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid color-mix(in srgb, var(--acento) 35%, transparent);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), 0 0 18px color-mix(in srgb, var(--acento) 22%, transparent);
+    }
+    .glass-dark {
+      position: relative;
+      background: rgba(0, 0, 0, 0.40);
+      border: 1px solid color-mix(in srgb, var(--acento) 35%, transparent);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 0 22px color-mix(in srgb, var(--acento) 24%, transparent);
+    }
+    .glass::before, .glass-dark::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      z-index: 0;
+      background-image:
+        repeating-linear-gradient(45deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 4px),
+        repeating-linear-gradient(-45deg, rgba(0,0,0,0.12) 0 1px, transparent 1px 4px);
+      opacity: 0.5;
+    }
+    .glass > *, .glass-dark > * { position: relative; z-index: 1; }
+
+    .glow-strong {
+      box-shadow: 0 8px 32px rgba(0,0,0,0.55), 0 0 34px color-mix(in srgb, var(--acento) 42%, transparent) !important;
+      border-color: color-mix(in srgb, var(--acento) 55%, transparent) !important;
+    }
+
+    @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+      .glass      { background: rgba(20, 20, 20, 0.92); }
+      .glass-dark { background: rgba(0, 0, 0, 0.88); }
+      body.overlay .glass      { background: rgba(20, 20, 20, 0.72); }
+      body.overlay .glass-dark { background: rgba(0, 0, 0, 0.72); }
+    }
+    @supports not (background: color-mix(in srgb, red, blue)) {
+      .glass { border-color: rgba(255, 255, 255, 0.10); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45); }
+      .glass-dark { border-color: rgba(255, 255, 255, 0.10); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55); }
+      .glow-strong { box-shadow: 0 8px 32px rgba(0,0,0,0.55), 0 0 24px rgba(220,38,38,0.45) !important; }
+    }
+
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: #0a0a0a; }
+    ::-webkit-scrollbar-thumb { background: var(--acento); border-radius: 8px; }
+
+    a:focus-visible, button:focus-visible {
+      outline: 2px solid #dc2626;
+      outline-offset: 3px;
+      border-radius: 4px;
+    }
+
+    @keyframes bgBreath {
+      0%   { background-position: 0% 0%, 100% 100%, 0 0; }
+      100% { background-position: 10% 8%, 90% 92%, 0 0; }
+    }
+    body:not(.overlay) { animation: bgBreath 30s ease-in-out infinite alternate; }
+
+    .team-bar { width: 4px; border-radius: 9999px; align-self: stretch; }
+    .fade-in { animation: fadeIn 0.5s ease; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* ===== MODO OVERLAY (?overlay=1) ===== */
+    body.overlay { background: transparent !important; animation: none !important; }
+    body.overlay .glass, body.overlay .glass-dark { box-shadow: none; }
+    body.overlay [data-hide-overlay] { display: none !important; }
+    body.overlay main { padding-top: 1rem; }
+
+    /* ===== MODO ESCENA (?scene=<id>) ===== */
+    body.scene [data-hide-overlay] { display: none !important; }
+    body.scene main { padding: 1rem !important; }
+    body.scene main > section { display: none !important; }
+    body.scene main > section.scene-active { display: grid !important; }
+    body.scene main > section.scene-active.is-block { display: block !important; }
+
+    /* ===== Cinco luces de salida F1 (navegación) ===== */
+    .start-light { position: relative; display: inline-flex; flex-direction: column; align-items: center; }
+    .start-light .light {
+      width: 18px; height: 18px; border-radius: 9999px;
+      background: #3a0a0a; box-shadow: inset 0 0 4px rgba(0,0,0,0.8); display: block;
+      transition: background 0.2s, box-shadow 0.2s, transform 0.2s;
+    }
+    @media (min-width: 768px) { .start-light .light { width: 22px; height: 22px; } }
+    .start-light.on .light {
+      background: radial-gradient(circle at 35% 30%, #ff6b6b, #dc2626 60%, #7f1010);
+      box-shadow: 0 0 10px rgba(220,38,38,0.8), inset 0 0 3px rgba(255,255,255,0.4);
+    }
+    a.start-light:hover .light, a.start-light:focus-visible .light {
+      transform: scale(1.15);
+      box-shadow: 0 0 16px rgba(220,38,38,1), inset 0 0 3px rgba(255,255,255,0.6);
+    }
+
+    /* ===== Componentes de la página ===== */
+    .tiempo { font-family: 'Saira Condensed', 'Titillium Web', sans-serif; font-variant-numeric: tabular-nums; font-weight: 800; letter-spacing: 0.01em; line-height: 1; }
+    .msg { color: #9ca3af; font-size: 0.9rem; padding: 0.75rem 0; }
+    .sello { font-size: 0.7rem; color: #6b7280; font-weight: 600; white-space: nowrap; }
+    .sello.text-amber-500 { color: #f59e0b; }
+
+    /* Círculo de neumático estilo Pirelli */
+    .tyre {
+      width: 24px; height: 24px; border-radius: 9999px; flex: none;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-family: 'Saira Condensed', sans-serif; font-weight: 800; font-size: 0.8rem;
+      border: 3px solid var(--c, #9ca3af); color: #fff; background: #111;
+    }
+    .tyre-S { --c: #ef4444; } .tyre-M { --c: #facc15; } .tyre-H { --c: #f3f4f6; }
+    .tyre-I { --c: #22c55e; } .tyre-W { --c: #3b82f6; } .tyre-N { --c: #4b5563; color: #9ca3af; }
+
+    .neu-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.2rem 0.5rem; border-radius: 0.5rem; background: rgba(255,255,255,0.04); min-height: 34px; }
+    .pen { color: #f59e0b; font-weight: 700; font-size: 0.75rem; }
+
+    /* Chips de racha */
+    .chip {
+      min-width: 38px; height: 28px; padding: 0 6px; border-radius: 0.5rem;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 0.8rem; font-variant-numeric: tabular-nums;
+    }
+    .chip-oro    { background: #d4af37; color: #1a1400; }
+    .chip-plata  { background: #c0c0c0; color: #111; }
+    .chip-bronce { background: #cd7f32; color: #1a0e00; }
+    .chip-puntos { background: #15803d; color: #fff; }
+    .chip-nada   { background: #374151; color: #d1d5db; }
+    .chip-rojo   { background: #b91c1c; color: #fff; }
+
+    .barra { height: 8px; border-radius: 9999px; background: rgba(255,255,255,0.1); overflow: hidden; }
+    .barra > span { display: block; height: 100%; border-radius: 9999px; background: linear-gradient(90deg, var(--acento2), var(--acento)); }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .fade-in { animation: none; }
+      body:not(.overlay) { animation: none; }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen text-white flex flex-col">
+
+  <!-- ===================== HEADER ===================== -->
+  <header data-hide-overlay class="w-full py-3 px-6 glass-dark border-b-2 border-red-600 sticky top-0 z-50 relative">
+    <div data-tema-franja class="absolute top-0 left-0 h-1 w-full" style="background:linear-gradient(90deg,var(--acento),var(--acento2))"></div>
+    <div class="max-w-[1760px] mx-auto grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-3">
+      <div class="flex items-center gap-3 justify-center md:justify-start">
+        <span class="h-8 w-1.5 bg-red-600 rounded-full"></span>
+        <h1 class="text-2xl md:text-3xl font-black tracking-tight uppercase whitespace-nowrap">
+          Paddock Club <span class="text-red-600">ES 🇪🇨</span>
+        </h1>
+      </div>
+      <nav aria-label="Navegación" class="flex items-center justify-self-center gap-3 md:gap-4 bg-black/50 border border-white/10 rounded-xl px-4 py-2">
+        <a href="bienvenida.html" aria-label="Ir a la pantalla de bienvenida" class="start-light on"><span class="light"></span></a>
+        <a href="fin-de-semana.html" aria-label="Fin de semana y campeonato (página actual)" aria-current="page" class="start-light on"><span class="light"></span></a>
+        <a href="circuito.html" aria-label="Ir a Circuito y stream" class="start-light on"><span class="light"></span></a>
+        <span class="start-light on" aria-hidden="true"><span class="light"></span></span>
+        <a href="despedida.html" aria-label="Ir a la pantalla de despedida" class="start-light on"><span class="light"></span></a>
+      </nav>
+      <div class="flex items-center justify-center md:justify-end gap-3">
+        <a href="index.html" class="text-sm font-bold text-gray-300 hover:text-white bg-black/40 px-3 py-1 rounded-lg border border-white/10">← Portal</a>
+        <span id="clock" class="text-sm md:text-base font-bold tabular-nums text-gray-200 bg-black/40 px-3 py-1 rounded-lg border border-white/10"></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================== CONTENIDO ===================== -->
+  <main class="flex-1 w-full max-w-[1760px] mx-auto px-4 md:px-6 py-6 space-y-6">
+
+    <!-- ========== A) DATOS DEL FIN DE SEMANA ========== -->
+    <section id="destacados" class="glass rounded-2xl p-5 grid grid-cols-1 xl:grid-cols-3 gap-4 scroll-mt-28">
+      <h2 class="xl:col-span-3 text-2xl md:text-3xl font-bold uppercase flex items-center gap-3">
+        <span class="h-6 w-1 bg-red-600 rounded-full"></span>
+        Datos del fin de semana
+      </h2>
+
+      <div class="xl:col-span-2 grid grid-cols-1 gap-4 content-start">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="glass-dark rounded-xl p-4">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-lg font-bold uppercase">🏁 Pole position</h3>
+              <span id="s-pole" class="sello"></span>
+            </div>
+            <div id="pole-box" class="msg">Cargando…</div>
+          </div>
+          <div class="glass-dark rounded-xl p-4">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-lg font-bold uppercase">⏱️ Vuelta rápida</h3>
+              <span id="s-vr" class="sello"></span>
+            </div>
+            <div id="vr-box" class="msg">Cargando…</div>
+          </div>
+        </div>
+
+        <div class="glass-dark rounded-xl p-4">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-lg font-bold uppercase">🛞 Neumáticos y penalizaciones de la grilla</h3>
+            <span id="s-neu" class="sello"></span>
+          </div>
+          <div id="neu-box" class="msg">Cargando…</div>
+        </div>
+      </div>
+
+      <div class="glass-dark rounded-xl p-4">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-lg font-bold uppercase">🏆 Puntos de la última carrera</h3>
+          <span id="s-pc" class="sello"></span>
+        </div>
+        <div id="pc-box" class="msg">Cargando…</div>
+      </div>
+    </section>
+
+    <!-- ========== B) CONTEXTO DE CAMPEONATO ========== -->
+    <section id="campeonato" class="glass rounded-2xl p-5 grid grid-cols-1 xl:grid-cols-3 gap-4 scroll-mt-28">
+      <h2 class="xl:col-span-3 text-2xl md:text-3xl font-bold uppercase flex items-center gap-3">
+        <span class="h-6 w-1 bg-red-600 rounded-full"></span>
+        Contexto de campeonato
+      </h2>
+
+      <div class="glass-dark rounded-xl p-4">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-lg font-bold uppercase">📅 Progreso de temporada</h3>
+          <span id="s-temp" class="sello"></span>
+        </div>
+        <div id="temp-box" class="msg">Cargando…</div>
+      </div>
+
+      <div class="glass-dark rounded-xl p-4 xl:col-span-2">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-lg font-bold uppercase">👑 Escenario de título</h3>
+          <span id="s-esc" class="sello"></span>
+        </div>
+        <div id="esc-box" class="msg">Cargando…</div>
+      </div>
+
+      <div class="glass-dark rounded-xl p-4 xl:col-span-2">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-lg font-bold uppercase">🔥 Racha de pilotos</h3>
+          <span id="s-rachas" class="sello"></span>
+        </div>
+        <div id="rachas-box" class="msg">Cargando…</div>
+      </div>
+
+      <div class="glass-dark rounded-xl p-4">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-lg font-bold uppercase">🤝 Compañeros de equipo</h3>
+          <span id="s-equipos" class="sello"></span>
+        </div>
+        <div id="equipos-box" class="msg">Cargando…</div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // ===================== CONFIGURACIÓN =====================
+    const BASE = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTF1fuQ6Nz-6uIScfyp1sugkd1MQ5TaQZB3IOqKBA6tF7YksRidLrXaP2KwOFD5lxaFIhttQ_yXzFqQ/pub";
+    const csv  = (gid) => `${BASE}?gid=${gid}&single=true&output=csv`;
+
+    // Hoja Pilotos. Columnas: # | Nombre | Equipo | Puntos
+    const DRIVERS_CSV_URL = csv("0");
+    // Hoja Temas. Columnas: pais | bandera | color1 | color2
+    const TEMAS_CSV_URL = csv("120476195");
+
+    // Hoja Destacados. Columnas: tipo | piloto | equipo | tiempo | detalle
+    //   tipo = "pole" o "vuelta rapida" / "vueltarapida" (sin acentos ni espacios al comparar)
+    const DESTACADOS_CSV_URL = csv("1311463174"); // Hoja Destacados
+    // Hoja Neumaticos. Columnas: pos | piloto | equipo | compuesto | pits | penalizacion
+    //   compuesto = S/M/H/I/W o blando/medio/duro/intermedio/lluvia (también soft/medium/hard/inter/wet)
+    //   penalizacion = texto libre (ámbar si no está vacío)
+    const NEUMATICOS_CSV_URL = csv("640439193"); // Hoja Neumaticos
+    // Hoja PuntosCarrera. Columnas: piloto | equipo | puntos | sprint   (sprint es opcional)
+    const PUNTOS_CARRERA_CSV_URL = csv("2074052645"); // Hoja PuntosCarrera
+    // Hoja Temporada. Formato clave | valor. Claves: ronda_actual, rondas_totales,
+    //   sprints_restantes, temporada (año, opcional). Se toleran mayúsculas/espacios en las claves.
+    const TEMPORADA_CSV_URL = csv("1982737946"); // Hoja Temporada
+    // Hoja Rachas. Columnas: piloto | equipo | r1 | r2 | r3 | r4 | r5   (r5 es la más reciente)
+    //   Celdas como "1", "P3", "DNF", "DNS", "NC".
+    const RACHAS_CSV_URL = csv("636741842"); // Hoja Rachas
+
+    // Puntos máximos por carrera / sprint (editables) para el escenario de título.
+    const PUNTOS_CARRERA = 25;
+    const PUNTOS_SPRINT = 8;
+
+    const REFRESH_MS = 60000;
+    const ZONA = "America/Guayaquil";
+    const ZONA_LABEL = "hora Ecuador";
+
+    // ===================== FLAGS (?overlay, ?scene, ?tema) =====================
+    const params = new URLSearchParams(location.search);
+    if (params.get("overlay") === "1") document.body.classList.add("overlay");
+
+    // ===================== TEMA POR PAÍS =====================
+    const TEMA_DEFECTO = { pais: "F1", bandera: "🏁", color1: "#dc2626", color2: "#7f1010" };
+    const TEMAS_FALLBACK = [
+      { pais: "México",      bandera: "🇲🇽", color1: "#006847", color2: "#ce1126" },
+      { pais: "Brasil",      bandera: "🇧🇷", color1: "#009c3b", color2: "#ffdf00" },
+      { pais: "España",      bandera: "🇪🇸", color1: "#aa151b", color2: "#f1bf00" },
+      { pais: "Italia",      bandera: "🇮🇹", color1: "#008c45", color2: "#cd212a" },
+      { pais: "Japón",       bandera: "🇯🇵", color1: "#bc002d", color2: "#ffffff" },
+      { pais: "Reino Unido", bandera: "🇬🇧", color1: "#012169", color2: "#c8102e" },
+      { pais: "EE.UU.",      bandera: "🇺🇸", color1: "#3c3b6e", color2: "#b22234" },
+    ];
+
+    // <PURE>
+    function normalizarPais(txt) {
+      return String(txt ?? "")
+        .toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]/g, "");
+    }
+    function esHexValido(c) {
+      return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(c ?? "").trim());
+    }
+    function hexAlfa(hex, alfa) {
+      let h = String(hex ?? "").trim().replace("#", "");
+      if (h.length === 3) h = h.split("").map(c => c + c).join("");
+      if (!/^[0-9a-f]{6}$/i.test(h)) h = "dc2626";
+      const r = parseInt(h.slice(0, 2), 16);
+      const g = parseInt(h.slice(2, 4), 16);
+      const b = parseInt(h.slice(4, 6), 16);
+      return `rgba(${r}, ${g}, ${b}, ${alfa})`;
+    }
+
+    // Número desde texto del CSV ("25", "25,5", "P3"→NaN). Devuelve NaN si no es número.
+    function aNumero(v) {
+      const s = String(v ?? "").trim().replace(",", ".");
+      return /^-?\d+(\.\d+)?$/.test(s) ? parseFloat(s) : NaN;
+    }
+
+    // Normaliza el compuesto de neumático a S/M/H/I/W (o null si no se reconoce).
+    function normalizarCompuesto(txt) {
+      const n = normalizarPais(txt);
+      if (!n) return null;
+      if (["s", "soft", "blando", "blanda", "suave"].includes(n)) return "S";
+      if (["m", "medium", "medio", "media"].includes(n)) return "M";
+      if (["h", "hard", "duro", "dura"].includes(n)) return "H";
+      if (["i", "int", "inter", "intermedio", "intermedios", "intermediate", "intermedia"].includes(n)) return "I";
+      if (["w", "wet", "lluvia", "mojado", "mojada", "full wet", "fullwet"].includes(n)) return "W";
+      return null;
+    }
+
+    // Normaliza el tipo de la hoja Destacados: "pole" | "vr" | null.
+    function normalizarTipo(txt) {
+      const n = normalizarPais(txt);
+      if (n === "pole" || n === "poleposition") return "pole";
+      if (n === "vueltarapida" || n === "fastestlap" || n === "vr") return "vr";
+      return null;
+    }
+
+    // Clase del chip de una racha. Devuelve { clase, texto }.
+    function clasificarRacha(valor) {
+      const raw = String(valor ?? "").trim().toUpperCase();
+      if (!raw) return { clase: "chip-nada", texto: "–" };
+      if (/^(DNF|DNS|DSQ|DQ|RET|NQ)$/.test(raw)) return { clase: "chip-rojo", texto: raw };
+      const m = raw.match(/^P?(\d{1,2})$/);
+      if (!m) return { clase: "chip-nada", texto: raw };
+      const pos = parseInt(m[1], 10);
+      const texto = String(pos);
+      if (pos === 1) return { clase: "chip-oro", texto };
+      if (pos === 2) return { clase: "chip-plata", texto };
+      if (pos === 3) return { clase: "chip-bronce", texto };
+      if (pos >= 4 && pos <= 10) return { clase: "chip-puntos", texto };
+      return { clase: "chip-nada", texto };
+    }
+
+    // Puntos en juego: restantes*PUNTOS_CARRERA + sprintsRestantes*PUNTOS_SPRINT.
+    function puntosEnJuego(rondaActual, rondasTotales, sprintsRestantes, ptsCarrera, ptsSprint) {
+      const restantes = Math.max(0, rondasTotales - rondaActual);
+      const sprints = Math.max(0, sprintsRestantes || 0);
+      return restantes * ptsCarrera + sprints * ptsSprint;
+    }
+
+    // Escenario de título. pilotos: [{nombre, equipo, puntos}] (cualquier orden).
+    // temporada: { rondaActual, rondasTotales, sprintsRestantes }.
+    // Un piloto está eliminado solo si lider > piloto + enJuego.
+    function calcularEscenario(pilotos, temporada, ptsCarrera, ptsSprint) {
+      const lista = (pilotos || []).filter(p => Number.isFinite(p.puntos))
+        .slice().sort((a, b) => b.puntos - a.puntos);
+      if (!lista.length || !temporada ||
+          !Number.isFinite(temporada.rondaActual) || !Number.isFinite(temporada.rondasTotales)) return null;
+      const enJuego = puntosEnJuego(temporada.rondaActual, temporada.rondasTotales,
+        temporada.sprintsRestantes, ptsCarrera, ptsSprint);
+      const lider = lista[0];
+      const segundo = lista[1] || null;
+      const ventaja = segundo ? lider.puntos - segundo.puntos : lider.puntos;
+      const candidatos = lista.filter(p => !(lider.puntos > p.puntos + enJuego));
+      const decidido = ventaja > enJuego;
+      const necesita = decidido ? 0 : Math.max(0, enJuego - ventaja + 1);
+      return { enJuego, lider, segundo, ventaja, candidatos, decidido, necesita };
+    }
+
+    // Agrupa pilotos por equipo normalizado. Orden: puntos totales del equipo desc.
+    // Con 2+ pilotos: diff = puntos del 1º − puntos del 2º y pct = [% 1º, % 2º] (barra).
+    function agruparEquipos(pilotos) {
+      const mapa = new Map();
+      (pilotos || []).forEach(p => {
+        if (!Number.isFinite(p.puntos)) return;
+        const k = normalizarPais(p.equipo) || "sinequipo";
+        if (!mapa.has(k)) mapa.set(k, { clave: k, equipo: p.equipo || "—", total: 0, pilotos: [] });
+        const e = mapa.get(k);
+        e.pilotos.push(p);
+        e.total += p.puntos;
+      });
+      const equipos = Array.from(mapa.values());
+      equipos.forEach(e => {
+        e.pilotos.sort((a, b) => b.puntos - a.puntos);
+        if (e.pilotos.length >= 2) {
+          const a = e.pilotos[0].puntos, b = e.pilotos[1].puntos;
+          e.diff = a - b;
+          const suma = a + b;
+          e.pct = suma > 0 ? [(a / suma) * 100, (b / suma) * 100] : [50, 50];
+        } else {
+          e.diff = null;
+          e.pct = null;
+        }
+      });
+      equipos.sort((a, b) => b.total - a.total);
+      return equipos;
+    }
+    // </PURE>
+
+    function aplicarTema(tema) {
+      const t = tema || TEMA_DEFECTO;
+      const c1 = esHexValido(t.color1) ? t.color1 : TEMA_DEFECTO.color1;
+      const c2 = esHexValido(t.color2) ? t.color2 : TEMA_DEFECTO.color2;
+      const raiz = document.documentElement.style;
+      raiz.setProperty("--acento", c1);
+      raiz.setProperty("--acento2", c2);
+      if (!document.body.classList.contains("overlay")) {
+        document.body.style.backgroundImage =
+          `radial-gradient(circle at 15% 10%, ${hexAlfa(c1, 0.18)}, transparent 40%),` +
+          `radial-gradient(circle at 85% 90%, ${hexAlfa(c2, 0.10)}, transparent 45%),` +
+          `linear-gradient(160deg, #0a0a0a 0%, #141414 100%)`;
+      } else {
+        document.body.style.backgroundImage = "";
+      }
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute("content", c1);
+    }
+
+    function resolverTema(lista) {
+      const temas = Array.isArray(lista) && lista.length ? lista : TEMAS_FALLBACK;
+      let clave = normalizarPais(params.get("tema") || "");
+      if (!clave) {
+        try { clave = normalizarPais(localStorage.getItem("f1tema") || ""); }
+        catch (e) { clave = ""; }
+      }
+      if (!clave) return TEMA_DEFECTO;
+      return temas.find(t => normalizarPais(t.pais) === clave) || TEMA_DEFECTO;
+    }
+
+    // ===================== HELPERS =====================
+    const COLORES_EQUIPO = [
+      { match: ["red bull"],              color: "#3671C6" },
+      { match: ["ferrari"],               color: "#E8002D" },
+      { match: ["mercedes"],              color: "#27F4D2" },
+      { match: ["mclaren", "mc laren"],   color: "#FF8000" },
+      { match: ["aston"],                 color: "#229971" },
+      { match: ["alpine"],                color: "#00A1E8" },
+      { match: ["williams"],              color: "#1868DB" },
+      { match: ["rb", "racing bulls", "visa", "tauri"], color: "#6692FF" },
+      { match: ["sauber", "kick", "stake"], color: "#52E252" },
+      { match: ["haas"],                  color: "#B6BABD" },
+    ];
+    function colorEquipo(nombre) {
+      const n = (nombre || "").toLowerCase();
+      for (const e of COLORES_EQUIPO) {
+        if (e.match.some(m => n.includes(m))) return e.color;
+      }
+      return "#9ca3af";
+    }
+    function esc(txt) {
+      return String(txt ?? "").replace(/[&<>"']/g, c => (
+        { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+      ));
+    }
+    function sello(id, info) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const t = info && info.cache && info.t ? new Date(info.t) : new Date();
+      const h = new Intl.DateTimeFormat("es-ES", { hour: "2-digit", minute: "2-digit", timeZone: ZONA }).format(t);
+      el.textContent = (info && info.cache ? "⚠ En caché · " : "Actualizado ") + h;
+      el.classList.toggle("text-amber-500", !!(info && info.cache));
+    }
+    function fade(el) {
+      if (!el) return;
+      el.classList.remove("fade-in"); void el.offsetWidth; el.classList.add("fade-in");
+    }
+
+    const fmtReloj = new Intl.DateTimeFormat("es-ES", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: ZONA });
+    function reloj() {
+      const el = document.getElementById("clock");
+      if (el) el.textContent = "🕐 " + fmtReloj.format(new Date()) + " " + ZONA_LABEL;
+    }
+
+    const CACHE_PREFIX = "f1cache:";
+    function guardarCache(url, filas) {
+      try { localStorage.setItem(CACHE_PREFIX + url, JSON.stringify({ t: Date.now(), filas })); }
+      catch (e) { /* storage lleno o deshabilitado */ }
+    }
+    function leerCache(url) {
+      try {
+        const raw = localStorage.getItem(CACHE_PREFIX + url);
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) { return null; }
+    }
+    function parseCSV(url, onOk, onErr) {
+      const usarCache = () => {
+        const c = leerCache(url);
+        if (c && Array.isArray(c.filas) && c.filas.length) {
+          onOk(c.filas, { cache: true, t: c.t });
+          return true;
+        }
+        return false;
+      };
+      Papa.parse(url, {
+        download: true, header: true, skipEmptyLines: true,
+        complete: (r) => {
+          const filas = r.data || [];
+          if (filas.length) {
+            guardarCache(url, filas);
+            onOk(filas, { cache: false });
+          } else if (!usarCache()) {
+            onOk(filas, { cache: false });
+          }
+        },
+        error: () => { if (!usarCache() && onErr) onErr(); }
+      });
+    }
+
+    function cargarTemas(onReady) {
+      if (!TEMAS_CSV_URL) { onReady(TEMAS_FALLBACK.slice()); return; }
+      parseCSV(TEMAS_CSV_URL, function (filas) {
+        const temas = (filas || []).map(f => {
+          const v = Object.values(f);
+          return {
+            pais:    (f.pais    ?? v[0] ?? "").toString().trim(),
+            bandera: (f.bandera ?? v[1] ?? "🏁").toString().trim(),
+            color1:  (f.color1  ?? v[2] ?? "").toString().trim(),
+            color2:  (f.color2  ?? v[3] ?? "").toString().trim(),
+          };
+        }).filter(t => t.pais);
+        onReady(temas.length ? temas : TEMAS_FALLBACK.slice());
+      }, function () { onReady(TEMAS_FALLBACK.slice()); });
+    }
+
+    // Lee una columna por nombre normalizado (con alternativas) o, si no, por posición.
+    function fila(f) {
+      const mapa = {};
+      Object.keys(f || {}).forEach(k => { mapa[normalizarPais(k)] = f[k]; });
+      const vals = Object.values(f || {});
+      return (nombres, idx) => {
+        for (const n of nombres) if (mapa[n] !== undefined && mapa[n] !== "") return String(mapa[n]).trim();
+        return idx !== undefined && vals[idx] !== undefined ? String(vals[idx]).trim() : "";
+      };
+    }
+
+    const msg = (t) => `<div class="msg">${esc(t)}</div>`;
+
+    // Cargador genérico por módulo: estados configurar / vacío / error / datos.
+    function cargarModulo(url, hoja, boxId, selloId, render) {
+      const box = document.getElementById(boxId);
+      if (!box) return;
+      if (!url) { box.innerHTML = msg(`Configura la hoja ${hoja}`); return; }
+      parseCSV(url, (filas, info) => {
+        if (!filas.length) { box.innerHTML = msg(`Sin datos en la hoja ${hoja}`); return; }
+        try { render(filas, box); } catch (e) { box.innerHTML = msg(`Datos de ${hoja} no válidos`); return; }
+        sello(selloId, info);
+        fade(box);
+      }, () => { box.innerHTML = msg(`No se pudo cargar la hoja ${hoja}`); });
+    }
+
+    // ===================== A) DESTACADOS =====================
+    function tarjetaDestacado(d) {
+      if (!d) return msg("Sin dato");
+      const color = colorEquipo(d.equipo);
+      return `<div class="flex gap-3 items-stretch">
+        <span class="team-bar" style="background:${color}"></span>
+        <div class="min-w-0">
+          <div class="text-xl font-bold truncate">${esc(d.piloto || "—")}</div>
+          <div class="text-sm text-gray-400 truncate">${esc(d.equipo || "")}</div>
+          <div class="tiempo text-4xl mt-2">${esc(d.tiempo || "—")}</div>
+          ${d.detalle ? `<div class="text-sm text-gray-300 mt-1">${esc(d.detalle)}</div>` : ""}
+        </div>
+      </div>`;
+    }
+    function cargarDestacados() {
+      const poleBox = document.getElementById("pole-box");
+      const vrBox = document.getElementById("vr-box");
+      if (!DESTACADOS_CSV_URL) {
+        poleBox.innerHTML = msg("Configura la hoja Destacados");
+        vrBox.innerHTML = msg("Configura la hoja Destacados");
+        return;
+      }
+      parseCSV(DESTACADOS_CSV_URL, (filas, info) => {
+        let pole = null, vr = null;
+        filas.forEach(f => {
+          const g = fila(f);
+          const d = { piloto: g(["piloto"], 1), equipo: g(["equipo"], 2), tiempo: g(["tiempo"], 3), detalle: g(["detalle"], 4) };
+          const t = normalizarTipo(g(["tipo"], 0));
+          if (t === "pole" && !pole) pole = d;
+          if (t === "vr" && !vr) vr = d;
+        });
+        poleBox.innerHTML = pole ? tarjetaDestacado(pole) : msg("Sin dato de pole");
+        vrBox.innerHTML = vr ? tarjetaDestacado(vr) : msg("Sin dato de vuelta rápida");
+        sello("s-pole", info); sello("s-vr", info);
+        fade(poleBox); fade(vrBox);
+      }, () => {
+        poleBox.innerHTML = msg("No se pudo cargar la hoja Destacados");
+        vrBox.innerHTML = msg("No se pudo cargar la hoja Destacados");
+      });
+    }
+
+    function filaNeumatico(r) {
+      const comp = normalizarCompuesto(r.compuesto);
+      const letra = comp || "–";
+      const pits = r.pits !== "" ? `${esc(r.pits)} pit${r.pits === "1" ? "" : "s"}` : "";
+      return `<div class="neu-row">
+        <span class="w-9 text-sm font-bold text-gray-300 tabular-nums">P${esc(r.pos)}</span>
+        <span class="team-bar" style="background:${colorEquipo(r.equipo)};min-height:20px"></span>
+        <span class="flex-1 min-w-0 truncate text-sm font-semibold">${esc(r.piloto)}</span>
+        <span class="tyre tyre-${comp || "N"}" title="${esc(r.compuesto)}">${esc(letra)}</span>
+        <span class="w-14 text-xs text-gray-400 text-right">${pits}</span>
+        <span class="pen w-40 truncate text-right" title="${esc(r.pen)}">${r.pen ? "⚠ " + esc(r.pen) : ""}</span>
+      </div>`;
+    }
+    function cargarNeumaticos() {
+      cargarModulo(NEUMATICOS_CSV_URL, "Neumaticos", "neu-box", "s-neu", (filas, box) => {
+        const rows = filas.map((f, i) => {
+          const g = fila(f);
+          return { pos: g(["pos", "posicion"], 0) || String(i + 1), piloto: g(["piloto"], 1), equipo: g(["equipo"], 2),
+                   compuesto: g(["compuesto", "neumatico"], 3), pits: g(["pits", "paradas"], 4), pen: g(["penalizacion", "penalizaciones"], 5) };
+        }).filter(r => r.piloto);
+        rows.sort((a, b) => (aNumero(a.pos) || 99) - (aNumero(b.pos) || 99));
+        const izq = rows.slice(0, 11), der = rows.slice(11, 22);
+        box.className = "grid grid-cols-1 lg:grid-cols-2 gap-x-4 gap-y-1";
+        box.innerHTML = `<div class="flex flex-col gap-1">${izq.map(filaNeumatico).join("")}</div>
+                         <div class="flex flex-col gap-1">${der.map(filaNeumatico).join("")}</div>`;
+      });
+    }
+
+    function cargarPuntosCarrera() {
+      cargarModulo(PUNTOS_CARRERA_CSV_URL, "PuntosCarrera", "pc-box", "s-pc", (filas, box) => {
+        const rows = filas.map(f => {
+          const g = fila(f);
+          const c = aNumero(g(["puntos"], 2)), s = aNumero(g(["sprint"], 3));
+          const carrera = Number.isFinite(c) ? c : 0, sprint = Number.isFinite(s) ? s : 0;
+          return { piloto: g(["piloto"], 0), equipo: g(["equipo"], 1), carrera, sprint, total: carrera + sprint };
+        }).filter(r => r.piloto && r.total > 0).sort((a, b) => b.total - a.total);
+        if (!rows.length) { box.className = "msg"; box.innerHTML = "Sin puntos registrados"; return; }
+        box.className = "flex flex-col gap-1";
+        box.innerHTML = rows.map(r => `<div class="neu-row">
+          <span class="team-bar" style="background:${colorEquipo(r.equipo)};min-height:20px"></span>
+          <span class="flex-1 min-w-0 truncate text-sm font-semibold">${esc(r.piloto)}</span>
+          ${r.sprint > 0 ? `<span class="text-xs text-gray-400">${esc(r.carrera)} + ${esc(r.sprint)} sprint</span>` : ""}
+          <span class="f1-head text-xl font-extrabold tabular-nums w-12 text-right">+${esc(r.total)}</span>
+        </div>`).join("");
+      });
+    }
+
+    // ===================== B) CAMPEONATO =====================
+    // Estado compartido: Pilotos y Temporada alimentan varios módulos.
+    const est = { pil: undefined, temp: undefined };
+
+    function leerTemporada(filas) {
+      const o = {};
+      filas.forEach(f => {
+        const v = Object.values(f);
+        const g = fila(f);
+        const clave = normalizarPais(g(["clave"], 0));
+        if (clave) o[clave] = g(["valor"], 1);
+      });
+      // La primera fila de datos puede haberse consumido como cabecera si la hoja no la tiene: se tolera.
+      return {
+        rondaActual: aNumero(o.rondaactual),
+        rondasTotales: aNumero(o.rondastotales),
+        sprintsRestantes: aNumero(o.sprintsrestantes),
+        anio: o.temporada || "",
+      };
+    }
+    function temporadaValida(t) {
+      return t && Number.isFinite(t.rondaActual) && Number.isFinite(t.rondasTotales) && t.rondasTotales > 0;
+    }
+
+    function pintarTemporada() {
+      const box = document.getElementById("temp-box");
+      if (!TEMPORADA_CSV_URL) { box.className = "msg"; box.innerHTML = "Configura la hoja Temporada"; return; }
+      if (est.temp === undefined) return;
+      if (est.temp === "err") { box.className = "msg"; box.innerHTML = "No se pudo cargar la hoja Temporada"; return; }
+      if (!temporadaValida(est.temp)) { box.className = "msg"; box.innerHTML = "Configura la hoja Temporada"; return; }
+      const t = est.temp;
+      const pct = Math.max(0, Math.min(100, (t.rondaActual / t.rondasTotales) * 100));
+      box.className = "";
+      box.innerHTML = `${t.anio ? `<div class="text-sm text-gray-400">Temporada ${esc(t.anio)}</div>` : ""}
+        <div class="f1-head text-3xl font-extrabold">Carrera ${esc(t.rondaActual)} <span class="text-gray-400">de ${esc(t.rondasTotales)}</span></div>
+        <div class="barra my-2" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pct)}"><span style="width:${pct.toFixed(1)}%"></span></div>
+        <div class="flex justify-between text-sm text-gray-300"><span>${Math.round(pct)}% completado</span>
+        ${Number.isFinite(t.sprintsRestantes) ? `<span>Sprints restantes: ${esc(t.sprintsRestantes)}</span>` : ""}</div>`;
+      fade(box);
+    }
+
+    function pintarEscenario() {
+      const box = document.getElementById("esc-box");
+      box.className = "msg";
+      if (!TEMPORADA_CSV_URL || est.temp === null || (est.temp !== undefined && est.temp !== "err" && !temporadaValida(est.temp))) {
+        box.innerHTML = "Configura la hoja Temporada"; return;
+      }
+      if (est.temp === "err") { box.innerHTML = "No se pudo cargar la hoja Temporada"; return; }
+      if (est.pil === "err") { box.innerHTML = "No se pudo cargar la hoja Pilotos"; return; }
+      if (est.temp === undefined || est.pil === undefined) return;
+      const e = calcularEscenario(est.pil, est.temp, PUNTOS_CARRERA, PUNTOS_SPRINT);
+      if (!e) { box.innerHTML = "Sin datos de Pilotos"; return; }
+      const estado = e.decidido ? "Título matemáticamente decidido" : `Líder necesita ${e.necesita} puntos`;
+      box.className = "";
+      box.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+          <div><div class="text-xs uppercase text-gray-400">Puntos en juego</div><div class="tiempo text-4xl">${esc(e.enJuego)}</div></div>
+          <div><div class="text-xs uppercase text-gray-400">Ventaja del líder${e.segundo ? " sobre el 2º" : ""}</div><div class="tiempo text-4xl">${esc(e.ventaja)}</div></div>
+          <div><div class="text-xs uppercase text-gray-400">Estado</div><div class="f1-head text-xl font-bold ${e.decidido ? "text-green-400" : "text-amber-400"}">${esc(estado)}</div></div>
+        </div>
+        <div class="text-xs uppercase text-gray-400 mb-1">Aún pueden ser campeones (${e.candidatos.length})</div>
+        <div class="flex flex-wrap gap-2">${e.candidatos.map(p => `<span class="inline-flex items-center gap-2 bg-white/5 rounded-lg px-2 py-1 text-sm">
+          <span class="team-bar" style="background:${colorEquipo(p.equipo)};height:16px;align-self:auto"></span>${esc(p.nombre)} <span class="text-gray-400 tabular-nums">${esc(p.puntos)}</span></span>`).join("")}</div>`;
+      fade(box);
+    }
+
+    function pintarEquipos() {
+      const box = document.getElementById("equipos-box");
+      box.className = "msg";
+      if (est.pil === undefined) return;
+      if (est.pil === "err") { box.innerHTML = "No se pudo cargar la hoja Pilotos"; return; }
+      const equipos = agruparEquipos(est.pil);
+      if (!equipos.length) { box.innerHTML = "Sin datos de Pilotos"; return; }
+      box.className = "flex flex-col gap-2";
+      box.innerHTML = equipos.map(e => {
+        const color = colorEquipo(e.equipo);
+        const [a, b] = e.pilotos;
+        if (!b) {
+          return `<div class="text-sm"><div class="flex justify-between"><span class="font-semibold" style="color:${color}">${esc(e.equipo)}</span><span class="tabular-nums text-gray-300">${esc(a.nombre)} · ${esc(a.puntos)}</span></div></div>`;
+        }
+        return `<div class="text-sm">
+          <div class="flex justify-between gap-2"><span class="font-semibold truncate" style="color:${color}">${esc(e.equipo)}</span><span class="text-xs text-gray-400">Dif. ${esc(e.diff)}</span></div>
+          <div class="flex justify-between gap-2 tabular-nums"><span class="truncate">${esc(a.nombre)} <b>${esc(a.puntos)}</b></span><span class="truncate text-right">${esc(b.nombre)} <b>${esc(b.puntos)}</b></span></div>
+          <div class="flex h-2 rounded-full overflow-hidden bg-white/10"><span style="width:${e.pct[0].toFixed(1)}%;background:${color}"></span><span style="width:${e.pct[1].toFixed(1)}%;background:${color};opacity:.45"></span></div>
+        </div>`;
+      }).join("");
+      sello("s-equipos", est.pilInfo);
+      fade(box);
+    }
+
+    function cargarPilotos() {
+      if (!DRIVERS_CSV_URL) { est.pil = []; pintarEscenario(); pintarEquipos(); return; }
+      parseCSV(DRIVERS_CSV_URL, (filas, info) => {
+        est.pil = filas.map(f => {
+          const g = fila(f);
+          return { nombre: g(["nombre", "piloto"], 1), equipo: g(["equipo"], 2), puntos: aNumero(g(["puntos"], 3)) };
+        }).filter(p => p.nombre && Number.isFinite(p.puntos));
+        est.pilInfo = info;
+        sello("s-esc", info);
+        pintarEscenario(); pintarEquipos();
+      }, () => { est.pil = "err"; pintarEscenario(); pintarEquipos(); });
+    }
+
+    function cargarTemporada() {
+      if (!TEMPORADA_CSV_URL) { est.temp = null; pintarTemporada(); pintarEscenario(); return; }
+      parseCSV(TEMPORADA_CSV_URL, (filas, info) => {
+        est.temp = leerTemporada(filas);
+        sello("s-temp", info);
+        pintarTemporada(); pintarEscenario();
+      }, () => { est.temp = "err"; pintarTemporada(); pintarEscenario(); });
+    }
+
+    function cargarRachas() {
+      cargarModulo(RACHAS_CSV_URL, "Rachas", "rachas-box", "s-rachas", (filas, box) => {
+        box.className = "grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1";
+        box.innerHTML = filas.map(f => {
+          const g = fila(f);
+          const piloto = g(["piloto"], 0);
+          if (!piloto) return "";
+          const chips = [2, 3, 4, 5, 6].map((idx, i) => {
+            const v = g(["r" + (i + 1)], idx);
+            const c = clasificarRacha(v);
+            return `<span class="chip ${c.clase}" title="${esc(v)}">${esc(c.texto)}</span>`;
+          }).join("");
+          return `<div class="neu-row"><span class="team-bar" style="background:${colorEquipo(g(["equipo"], 1))};min-height:20px"></span>
+            <span class="flex-1 min-w-0 truncate text-sm font-semibold">${esc(piloto)}</span>
+            <span class="flex gap-1">${chips}</span></div>`;
+        }).join("");
+      });
+    }
+
+    function cargarTodo() {
+      cargarDestacados();
+      cargarNeumaticos();
+      cargarPuntosCarrera();
+      cargarTemporada();
+      cargarPilotos();
+      cargarRachas();
+    }
+
+    // ===================== ARRANQUE =====================
+    function iniciarSecuenciaLuces() {
+      const luces = Array.from(document.querySelectorAll("header nav .start-light"));
+      if (!luces.length) return;
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        luces.forEach(l => l.classList.add("on"));
+        return;
+      }
+      luces.forEach(l => l.classList.remove("on"));
+      let i = 0;
+      function paso() {
+        if (i < luces.length) {
+          luces[i].classList.add("on");
+          i++;
+          setTimeout(paso, 1000);
+        } else {
+          setTimeout(() => {
+            luces.forEach(l => l.classList.remove("on"));
+            i = 0;
+            setTimeout(paso, 1200);
+          }, 1000);
+        }
+      }
+      paso();
+    }
+
+    // Escenas: ids reales de las secciones hijas de <main>.
+    const SCENE_ALIAS = {
+      destacados: "destacados", "fin-de-semana": "destacados", finde: "destacados", weekend: "destacados",
+      pole: "destacados", neumaticos: "destacados", puntos: "destacados", datos: "destacados",
+      campeonato: "campeonato", contexto: "campeonato", titulo: "campeonato", rachas: "campeonato",
+      temporada: "campeonato", equipos: "campeonato",
+    };
+    const scene = (params.get("scene") || "").toLowerCase().trim();
+    if (scene) {
+      const id = SCENE_ALIAS[scene] || scene;
+      const sec = document.getElementById(id);
+      if (sec && sec.parentElement && sec.parentElement.tagName === "MAIN") {
+        document.body.classList.add("scene");
+        if (params.get("overlay") === "1") sec.classList.remove("glass");
+        sec.classList.add("scene-active");
+      }
+    }
+
+    // Propaga ?overlay, ?scene y ?tema en los enlaces del header.
+    (function propagarFlags() {
+      const p = new URLSearchParams();
+      ["overlay", "scene", "tema"].forEach(k => { if (params.get(k)) p.set(k, params.get(k)); });
+      const q = p.toString();
+      if (!q) return;
+      document.querySelectorAll("header a[href]").forEach(a => {
+        a.setAttribute("href", a.getAttribute("href") + "?" + q);
+      });
+    })();
+
+    aplicarTema(resolverTema(TEMAS_FALLBACK));
+    cargarTemas(lista => aplicarTema(resolverTema(lista)));
+    reloj(); setInterval(reloj, 1000);
+    iniciarSecuenciaLuces();
+    cargarTodo();
+    setInterval(cargarTodo, REFRESH_MS);
+  </script>
+</body>
+</html>

@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#dc2626" />
+  <meta name="description" content="Circuito y stream: ficha del circuito, clima, estado de pista, intervalos y próxima sesión." />
+  <title>Circuito y stream · Paddock Club ES</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏎️</text></svg>" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800&family=Titillium+Web:wght@400;600;700;900&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS vía CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- PapaParse vía CDN para leer CSV desde Google Sheets -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+  <style>
+    :root {
+      --acento:  #dc2626;   /* acento principal (rojo F1 por defecto) */
+      --acento2: #7f1010;   /* acento secundario */
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Titillium Web', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: #000;
+      background-image:
+        radial-gradient(circle at 15% 10%, rgba(220, 38, 38, 0.18), transparent 40%),
+        radial-gradient(circle at 85% 90%, rgba(220, 38, 38, 0.10), transparent 45%),
+        linear-gradient(160deg, #0a0a0a 0%, #141414 100%);
+      background-attachment: fixed;
+      background-size: 200% 200%, 200% 200%, 100% 100%;
+      overflow-x: hidden;
+    }
+    h1, h2, h3, .f1-head {
+      font-family: 'Saira Condensed', 'Titillium Web', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+    h1, h2 { letter-spacing: -0.01em; }
+
+    .glass {
+      position: relative;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid color-mix(in srgb, var(--acento) 35%, transparent);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), 0 0 18px color-mix(in srgb, var(--acento) 22%, transparent);
+    }
+    .glass-dark {
+      position: relative;
+      background: rgba(0, 0, 0, 0.40);
+      border: 1px solid color-mix(in srgb, var(--acento) 35%, transparent);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 0 22px color-mix(in srgb, var(--acento) 24%, transparent);
+    }
+    .glass::before, .glass-dark::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      z-index: 0;
+      background-image:
+        repeating-linear-gradient(45deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 4px),
+        repeating-linear-gradient(-45deg, rgba(0,0,0,0.12) 0 1px, transparent 1px 4px);
+      opacity: 0.5;
+    }
+    .glass > *, .glass-dark > * { position: relative; z-index: 1; }
+
+    .glow-strong {
+      box-shadow: 0 8px 32px rgba(0,0,0,0.55), 0 0 34px color-mix(in srgb, var(--acento) 42%, transparent) !important;
+      border-color: color-mix(in srgb, var(--acento) 55%, transparent) !important;
+    }
+
+    @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+      .glass      { background: rgba(20, 20, 20, 0.92); }
+      .glass-dark { background: rgba(0, 0, 0, 0.88); }
+      body.overlay .glass      { background: rgba(20, 20, 20, 0.72); }
+      body.overlay .glass-dark { background: rgba(0, 0, 0, 0.72); }
+    }
+    @supports not (background: color-mix(in srgb, red, blue)) {
+      .glass { border-color: rgba(255, 255, 255, 0.10); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45); }
+      .glass-dark { border-color: rgba(255, 255, 255, 0.10); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55); }
+      .glow-strong { box-shadow: 0 8px 32px rgba(0,0,0,0.55), 0 0 24px rgba(220,38,38,0.45) !important; }
+    }
+
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: #0a0a0a; }
+    ::-webkit-scrollbar-thumb { background: var(--acento); border-radius: 8px; }
+
+    a:focus-visible, button:focus-visible {
+      outline: 2px solid #dc2626;
+      outline-offset: 3px;
+      border-radius: 4px;
+    }
+
+    @keyframes bgBreath {
+      0%   { background-position: 0% 0%, 100% 100%, 0 0; }
+      100% { background-position: 10% 8%, 90% 92%, 0 0; }
+    }
+    body:not(.overlay) { animation: bgBreath 30s ease-in-out infinite alternate; }
+
+    .team-bar { width: 4px; border-radius: 9999px; align-self: stretch; }
+    .fade-in { animation: fadeIn 0.5s ease; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* ===== MODO OVERLAY (?overlay=1) ===== */
+    body.overlay { background: transparent !important; animation: none !important; }
+    body.overlay .glass, body.overlay .glass-dark { box-shadow: none; }
+    body.overlay [data-hide-overlay] { display: none !important; }
+    body.overlay main { padding-top: 1rem; }
+
+    /* ===== MODO ESCENA (?scene=<id>) ===== */
+    body.scene [data-hide-overlay] { display: none !important; }
+    body.scene main { padding: 1rem !important; }
+    body.scene main > section { display: none !important; }
+    body.scene main > section.scene-active { display: grid !important; }
+    body.scene main > section.scene-active.is-block { display: block !important; }
+
+    /* ===== Cinco luces de salida F1 (navegación) ===== */
+    .start-light { position: relative; display: inline-flex; flex-direction: column; align-items: center; }
+    .start-light .light {
+      width: 18px; height: 18px; border-radius: 9999px;
+      background: #3a0a0a; box-shadow: inset 0 0 4px rgba(0,0,0,0.8); display: block;
+      transition: background 0.2s, box-shadow 0.2s, transform 0.2s;
+    }
+    @media (min-width: 768px) { .start-light .light { width: 22px; height: 22px; } }
+    .start-light.on .light {
+      background: radial-gradient(circle at 35% 30%, #ff6b6b, #dc2626 60%, #7f1010);
+      box-shadow: 0 0 10px rgba(220,38,38,0.8), inset 0 0 3px rgba(255,255,255,0.4);
+    }
+    a.start-light:hover .light, a.start-light:focus-visible .light {
+      transform: scale(1.15);
+      box-shadow: 0 0 16px rgba(220,38,38,1), inset 0 0 3px rgba(255,255,255,0.6);
+    }
+
+        /* ===== Componentes de la página ===== */
+    body.scene main { display: block !important; }
+    .msg { color: #9ca3af; font-size: 0.9rem; padding: 0.75rem 0; }
+    .sello { font-size: 0.7rem; color: #6b7280; font-weight: 600; white-space: nowrap; }
+    .sello.text-amber-500 { color: #f59e0b; }
+    .tiempo { font-family: 'Saira Condensed', 'Titillium Web', sans-serif; font-variant-numeric: tabular-nums; font-weight: 800; letter-spacing: 0.01em; line-height: 1; }
+
+    /* Ficha técnica */
+    .ficha-row { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding: 0.4rem 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .ficha-row dt { color: #9ca3af; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+    .ficha-row dd { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+    .trazado { background: rgba(0,0,0,0.35); border-radius: 0.75rem; padding: 0.5rem; }
+    .trazado img { width: 100%; max-height: 300px; object-fit: contain; border-radius: 0.75rem; display: block; }
+    .clima-item { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.10); border-radius: 0.75rem; padding: 0.5rem 0.75rem; display: flex; align-items: center; gap: 0.6rem; }
+    .clima-item .v { font-family: 'Saira Condensed', sans-serif; font-weight: 800; font-size: 1.4rem; line-height: 1; }
+    .clima-item .l { font-size: 0.7rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.06em; }
+    .clima-lluvia { background: rgba(37,99,235,0.28); border-color: #3b82f6; box-shadow: 0 0 14px rgba(59,130,246,0.45); }
+    .clima-lluvia .v { color: #93c5fd; }
+
+    /* Estado de pista */
+    .pista-tira { border-radius: 0.9rem; padding: 1.25rem 1.5rem; text-align: center; border: 2px solid rgba(255,255,255,0.15); }
+    .pista-tira .t { font-family: 'Saira Condensed', sans-serif; font-weight: 800; text-transform: uppercase; font-size: 2.6rem; line-height: 1.05; letter-spacing: 0.02em; }
+    .pista-tira .m { margin-top: 0.4rem; font-size: 1.05rem; font-weight: 600; }
+    .pista-neutro   { background: rgba(255,255,255,0.06); color: #d1d5db; }
+    .pista-verde    { background: #15803d; border-color: #4ade80; color: #fff; }
+    .pista-amarilla { background: #facc15; border-color: #fde68a; color: #1a1400; }
+    .pista-roja     { background: #b91c1c; border-color: #fca5a5; color: #fff; }
+    .pista-sc       { background: #d97706; border-color: #fcd34d; color: #fff; }
+    .pista-vsc      { background: #a16207; border-color: #fde047; color: #fff; }
+    .pista-cuadros  {
+      color: #fff; border-color: #fff;
+      background-color: #fff;
+      background-image: repeating-conic-gradient(#000 0% 25%, #fff 0% 50%);
+      background-size: 48px 48px;
+    }
+    .pista-cuadros .t, .pista-cuadros .m { background: rgba(0,0,0,0.85); display: inline-block; padding: 0.15rem 0.9rem; border-radius: 0.4rem; }
+    @keyframes pistaPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.72; } }
+    .pulsa { animation: pistaPulse 1.6s ease-in-out infinite; }
+    @keyframes alertaPulse { 0%, 100% { box-shadow: 0 0 10px rgba(220,38,38,0.5); } 50% { box-shadow: 0 0 34px rgba(220,38,38,1); } }
+
+    /* Intervalos */
+    .int-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.3rem 0.6rem; border-radius: 0.5rem; background: rgba(255,255,255,0.04); min-height: 40px; }
+    .int-pos { width: 2rem; text-align: center; font-family: 'Saira Condensed', sans-serif; font-weight: 800; font-size: 1.3rem; }
+    .int-val { font-family: 'Saira Condensed', sans-serif; font-weight: 800; font-size: 1.3rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+    /* Próxima sesión */
+    .prox-card { border-radius: 0.9rem; padding: 1.25rem 1.5rem; text-align: center; border: 2px solid rgba(255,255,255,0.12); background: rgba(0,0,0,0.35); }
+    .prox-card .cd { font-family: 'Saira Condensed', sans-serif; font-variant-numeric: tabular-nums; font-weight: 800; font-size: 4.2rem; line-height: 1; margin-top: 0.6rem; }
+    .prox-badge { display: inline-block; font-weight: 800; font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.15rem 0.7rem; border-radius: 9999px; margin-bottom: 0.5rem; }
+    .prox-ambar { border-color: #f59e0b; background: rgba(245,158,11,0.18); }
+    .prox-ambar .prox-badge { background: #f59e0b; color: #1a1000; }
+    .prox-rojo  { border-color: #ef4444; background: rgba(220,38,38,0.25); animation: alertaPulse 1s ease-in-out infinite; }
+    .prox-rojo .prox-badge { background: #dc2626; color: #fff; }
+    .prox-pista { border-color: #22c55e; background: rgba(34,197,94,0.18); }
+    .prox-pista .prox-badge { background: #16a34a; color: #fff; }
+    .prox-normal .prox-badge { background: rgba(255,255,255,0.12); color: #d1d5db; }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .fade-in { animation: none; }
+      body:not(.overlay) { animation: none; }
+      .pulsa, .prox-rojo { animation: none; }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen text-white flex flex-col">
+
+  <!-- ===================== HEADER ===================== -->
+  <header data-hide-overlay class="w-full py-3 px-6 glass-dark border-b-2 border-red-600 sticky top-0 z-50 relative">
+    <div data-tema-franja class="absolute top-0 left-0 h-1 w-full" style="background:linear-gradient(90deg,var(--acento),var(--acento2))"></div>
+    <div class="max-w-[1760px] mx-auto grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-3">
+      <div class="flex items-center gap-3 justify-center md:justify-start">
+        <span class="h-8 w-1.5 bg-red-600 rounded-full"></span>
+        <h1 class="text-2xl md:text-3xl font-black tracking-tight uppercase whitespace-nowrap">
+          Paddock Club <span class="text-red-600">ES 🇪🇨</span>
+        </h1>
+      </div>
+      <nav aria-label="Navegación" class="flex items-center justify-self-center gap-3 md:gap-4 bg-black/50 border border-white/10 rounded-xl px-4 py-2">
+        <a href="bienvenida.html" aria-label="Ir a la pantalla de bienvenida" class="start-light on"><span class="light"></span></a>
+        <a href="fin-de-semana.html" aria-label="Ir a Fin de semana y campeonato" class="start-light on"><span class="light"></span></a>
+        <a href="circuito.html" aria-label="Circuito y stream (página actual)" aria-current="page" class="start-light on"><span class="light"></span></a>
+        <span class="start-light on" aria-hidden="true"><span class="light"></span></span>
+        <a href="despedida.html" aria-label="Ir a la pantalla de despedida" class="start-light on"><span class="light"></span></a>
+      </nav>
+      <div class="flex items-center justify-center md:justify-end gap-3">
+        <a href="index.html" class="text-sm font-bold text-gray-300 hover:text-white bg-black/40 px-3 py-1 rounded-lg border border-white/10">← Portal</a>
+        <span id="clock" class="text-sm md:text-base font-bold tabular-nums text-gray-200 bg-black/40 px-3 py-1 rounded-lg border border-white/10"></span>
+      </div>
+    </div>
+  </header>
+
+    <!-- ===================== CONTENIDO ===================== -->
+  <main class="flex-1 w-full max-w-[1760px] mx-auto px-4 md:px-6 py-6 grid grid-cols-1 xl:grid-cols-2 gap-6 content-start">
+
+    <!-- ========== A) INFORMACIÓN DE CIRCUITO ========== -->
+    <section id="circuito" class="is-block glass rounded-2xl p-5 xl:col-span-2 scroll-mt-28">
+      <div class="flex items-center justify-between gap-3 mb-3">
+        <h2 class="text-2xl md:text-3xl font-bold uppercase flex items-center gap-3">
+          <span class="h-6 w-1 bg-red-600 rounded-full"></span>
+          Información de circuito
+        </h2>
+        <span id="s-circuito" class="sello"></span>
+      </div>
+      <div id="circuito-box" class="msg">Cargando…</div>
+    </section>
+
+    <!-- ========== B) ESTADO DE PISTA ========== -->
+    <section id="estado-pista" class="is-block glass rounded-2xl p-5 scroll-mt-28">
+      <div class="flex items-center justify-between gap-3 mb-3">
+        <h2 class="text-2xl md:text-3xl font-bold uppercase flex items-center gap-3">
+          <span class="h-6 w-1 bg-red-600 rounded-full"></span>
+          Estado de pista
+        </h2>
+        <span id="s-pista" class="sello"></span>
+      </div>
+      <div id="pista-box" class="msg">Cargando…</div>
+    </section>
+
+    <!-- ========== C) INTERVALOS (TOP 10) ========== -->
+    <section id="intervalos" class="is-block glass rounded-2xl p-5 scroll-mt-28 xl:row-span-2">
+      <div class="flex items-center justify-between gap-3 mb-3">
+        <h2 class="text-2xl md:text-3xl font-bold uppercase flex items-center gap-3">
+          <span class="h-6 w-1 bg-red-600 rounded-full"></span>
+          Intervalos (Top 10)
+        </h2>
+        <span id="s-int" class="sello"></span>
+      </div>
+      <div id="int-box" class="msg">Cargando…</div>
+    </section>
+
+    <!-- ========== D) PRÓXIMA SESIÓN ========== -->
+    <section id="proxima-sesion" class="is-block glass rounded-2xl p-5 scroll-mt-28">
+      <div class="flex items-center justify-between gap-3 mb-3">
+        <h2 class="text-2xl md:text-3xl font-bold uppercase flex items-center gap-3">
+          <span class="h-6 w-1 bg-red-600 rounded-full"></span>
+          Próxima sesión
+        </h2>
+        <span id="s-prox" class="sello"></span>
+      </div>
+      <div id="prox-box" class="msg">Cargando…</div>
+    </section>
+
+  </main>
+
+  <script>
+    // ===================== CONFIGURACIÓN =====================
+    const BASE = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTF1fuQ6Nz-6uIScfyp1sugkd1MQ5TaQZB3IOqKBA6tF7YksRidLrXaP2KwOFD5lxaFIhttQ_yXzFqQ/pub";
+    const csv  = (gid) => `${BASE}?gid=${gid}&single=true&output=csv`;
+
+    // Hoja Horario. Columnas: clave | sesion | fecha | pais | bandera | circuito
+    //   fecha = "AAAA-MM-DD HH:MM" o rango "AAAA-MM-DD HH:MM - HH:MM"
+    const SCHEDULE_CSV_URL = csv("1418950549");
+    // Hoja Temas. Columnas: pais | bandera | color1 | color2
+    const TEMAS_CSV_URL = csv("120476195");
+
+    // Hoja Circuito. Formato campo | valor (una fila por campo; se toleran mayúsculas/acentos/espacios).
+    //   Campos: nombre, pais, bandera, longitud, vueltas, distancia, curvas, drs,
+    //           record (tiempo), record_piloto, record_anio, ganador_anterior,
+    //           imagen (URL http/https), temp_aire, temp_pista, lluvia (prob. %), viento, estado_clima
+    const CIRCUITO_CSV_URL = csv("249048631"); // Hoja Circuito
+    // Hoja EstadoPista. Columnas: estado | mensaje   (se usa la primera fila)
+    //   estado = verde/green, amarilla/yellow, roja/red, safetycar/sc, vsc, cuadros/chequered/fin
+    const ESTADO_PISTA_CSV_URL = csv("262509698"); // Hoja EstadoPista
+    // Hoja Intervalos. Columnas: pos | piloto | equipo | intervalo | vueltas (opcional)
+    //   intervalo = texto libre ("+1.234", "LÍDER", "+1 VUELTA")
+    const INTERVALOS_CSV_URL = csv("1134838023"); // Hoja Intervalos
+
+    const REFRESH_MS = 60000;
+    const ZONA = "America/Guayaquil";
+    const ZONA_LABEL = "hora Ecuador";
+
+    const fmtDia  = new Intl.DateTimeFormat("es-ES", { weekday: "long", day: "2-digit", month: "long", timeZone: ZONA });
+    const fmtHora = new Intl.DateTimeFormat("es-ES", { hour: "2-digit", minute: "2-digit", timeZone: ZONA });
+    const cap = (txt) => txt.charAt(0).toUpperCase() + txt.slice(1);
+
+    // ===================== FLAGS (?overlay, ?scene, ?tema) =====================
+    const params = new URLSearchParams(location.search);
+    if (params.get("overlay") === "1") document.body.classList.add("overlay");
+
+    // ===================== TEMA POR PAÍS =====================
+    const TEMA_DEFECTO = { pais: "F1", bandera: "🏁", color1: "#dc2626", color2: "#7f1010" };
+    const TEMAS_FALLBACK = [
+      { pais: "México",      bandera: "🇲🇽", color1: "#006847", color2: "#ce1126" },
+      { pais: "Brasil",      bandera: "🇧🇷", color1: "#009c3b", color2: "#ffdf00" },
+      { pais: "España",      bandera: "🇪🇸", color1: "#aa151b", color2: "#f1bf00" },
+      { pais: "Italia",      bandera: "🇮🇹", color1: "#008c45", color2: "#cd212a" },
+      { pais: "Japón",       bandera: "🇯🇵", color1: "#bc002d", color2: "#ffffff" },
+      { pais: "Reino Unido", bandera: "🇬🇧", color1: "#012169", color2: "#c8102e" },
+      { pais: "EE.UU.",      bandera: "🇺🇸", color1: "#3c3b6e", color2: "#b22234" },
+    ];
+
+    // <PURE>
+    function normalizarPais(txt) {
+      return String(txt ?? "")
+        .toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]/g, "");
+    }
+    function esHexValido(c) {
+      return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(c ?? "").trim());
+    }
+    function hexAlfa(hex, alfa) {
+      let h = String(hex ?? "").trim().replace("#", "");
+      if (h.length === 3) h = h.split("").map(c => c + c).join("");
+      if (!/^[0-9a-f]{6}$/i.test(h)) h = "dc2626";
+      const r = parseInt(h.slice(0, 2), 16);
+      const g = parseInt(h.slice(2, 4), 16);
+      const b = parseInt(h.slice(4, 6), 16);
+      return `rgba(${r}, ${g}, ${b}, ${alfa})`;
+    }
+    function aNumero(v) {
+      const s = String(v ?? "").trim().replace(",", ".");
+      return /^-?\d+(\.\d+)?$/.test(s) ? parseFloat(s) : NaN;
+    }
+
+    function parseFecha(texto) {
+      if (!texto) return null;
+      if (texto instanceof Date) return isNaN(texto.getTime()) ? null : texto;
+      const d = new Date(String(texto).trim().replace(" ", "T"));
+      return isNaN(d.getTime()) ? null : d;
+    }
+    // "2026-10-23 13:30 - 15:30" -> { inicio, fin }
+    function parseRango(texto) {
+      if (!texto) return { inicio: null, fin: null };
+      if (texto instanceof Date) return { inicio: parseFecha(texto), fin: null };
+      const partes = String(texto).trim().split(/\s+-\s+/);
+      const inicio = parseFecha(partes[0]);
+      let fin = null;
+      if (inicio && partes[1]) {
+        const m = partes[1].trim().match(/^(\d{1,2}):(\d{2})$/);
+        if (m) {
+          fin = new Date(inicio);
+          fin.setHours(Number(m[1]), Number(m[2]), 0, 0);
+          if (fin < inicio) fin.setDate(fin.getDate() + 1); // cruza medianoche
+        } else {
+          fin = parseFecha(partes[1]);
+        }
+      }
+      return { inicio, fin };
+    }
+
+    // Solo http(s). Rechaza javascript:, data:, vbscript:, rutas relativas y vacíos.
+    // Devuelve la URL normalizada o "".
+    function urlImagenSegura(u) {
+      const s = String(u ?? "").trim();
+      if (!s || /[\u0000-\u001f\u007f\s]/.test(s)) return "";
+      let url;
+      try { url = new URL(s); } catch (e) { return ""; }
+      if (url.protocol !== "http:" && url.protocol !== "https:") return "";
+      if (!url.hostname) return "";
+      return url.href;
+    }
+
+    // Clasifica el estado de pista: "verde" | "amarilla" | "roja" | "sc" | "vsc" | "cuadros" | "neutro".
+    function clasificarEstadoPista(txt) {
+      const n = normalizarPais(txt);
+      if (!n) return "neutro";
+      if (["verde", "green", "libre", "pistalibre", "banderaverde"].includes(n)) return "verde";
+      if (["amarilla", "amarillo", "yellow", "banderaamarilla"].includes(n)) return "amarilla";
+      if (["roja", "rojo", "red", "banderaroja"].includes(n)) return "roja";
+      if (["vsc", "virtualsafetycar"].includes(n)) return "vsc";
+      if (["safetycar", "sc", "safety"].includes(n)) return "sc";
+      if (["cuadros", "chequered", "checkered", "fin", "banderaacuadros", "chequeredflag"].includes(n)) return "cuadros";
+      return "neutro";
+    }
+    const ESTADOS_PISTA = {
+      verde:    { texto: "Pista libre" },
+      amarilla: { texto: "Bandera amarilla" },
+      roja:     { texto: "Bandera roja" },
+      sc:       { texto: "Safety Car" },
+      vsc:      { texto: "Virtual Safety Car" },
+      cuadros:  { texto: "Bandera a cuadros" },
+      neutro:   { texto: "Sin incidencias" },
+    };
+
+    // Primera sesión cuyo fin (o inicio si no hay fin) aún no pasó. Devuelve índice o -1.
+    function indiceProximaSesion(sesiones, ahora) {
+      for (let i = 0; i < (sesiones || []).length; i++) {
+        const s = sesiones[i];
+        const ref = s.fin || s.fecha;
+        if (ref && ahora < ref) return i;
+      }
+      return -1;
+    }
+    // Umbrales en minutos.
+    const UMBRAL_AMBAR_MIN = 15;
+    const UMBRAL_ROJO_MIN = 5;
+    // Nivel de alerta de una sesión: "pista" (en curso) | "rojo" (<=5 min) | "ambar" (<=15 min) | "normal" | "fin".
+    function nivelAlerta(s, ahora) {
+      if (!s || !s.fecha) return "fin";
+      const diff = s.fecha - ahora;
+      if (diff <= 0) return (s.fin && ahora < s.fin) ? "pista" : "fin";
+      if (diff <= UMBRAL_ROJO_MIN * 60000) return "rojo";
+      if (diff <= UMBRAL_AMBAR_MIN * 60000) return "ambar";
+      return "normal";
+    }
+    // Cuenta atrás "Nd HH:MM:SS" (o "HH:MM:SS" si falta menos de un día).
+    function formatoCuentaAtras(ms) {
+      const t = Math.max(0, Math.floor(ms / 1000));
+      const d = Math.floor(t / 86400);
+      const p = (n) => String(n).padStart(2, "0");
+      const hms = `${p(Math.floor((t % 86400) / 3600))}:${p(Math.floor((t % 3600) / 60))}:${p(t % 60)}`;
+      return d > 0 ? `${d}d ${hms}` : hms;
+    }
+    // Lluvia >= 40 % se resalta. Acepta "60", "60%", "60 %".
+    function lluviaAlta(v) {
+      const n = aNumero(String(v ?? "").replace("%", "").trim());
+      return Number.isFinite(n) && n >= 40;
+    }
+    // </PURE>
+
+    function aplicarTema(tema) {
+      const t = tema || TEMA_DEFECTO;
+      const c1 = esHexValido(t.color1) ? t.color1 : TEMA_DEFECTO.color1;
+      const c2 = esHexValido(t.color2) ? t.color2 : TEMA_DEFECTO.color2;
+      const raiz = document.documentElement.style;
+      raiz.setProperty("--acento", c1);
+      raiz.setProperty("--acento2", c2);
+      if (!document.body.classList.contains("overlay")) {
+        document.body.style.backgroundImage =
+          `radial-gradient(circle at 15% 10%, ${hexAlfa(c1, 0.18)}, transparent 40%),` +
+          `radial-gradient(circle at 85% 90%, ${hexAlfa(c2, 0.10)}, transparent 45%),` +
+          `linear-gradient(160deg, #0a0a0a 0%, #141414 100%)`;
+      } else {
+        document.body.style.backgroundImage = "";
+      }
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute("content", c1);
+    }
+
+    function resolverTema(lista) {
+      const temas = Array.isArray(lista) && lista.length ? lista : TEMAS_FALLBACK;
+      let clave = normalizarPais(params.get("tema") || "");
+      if (!clave) {
+        try { clave = normalizarPais(localStorage.getItem("f1tema") || ""); }
+        catch (e) { clave = ""; }
+      }
+      if (!clave) return TEMA_DEFECTO;
+      return temas.find(t => normalizarPais(t.pais) === clave) || TEMA_DEFECTO;
+    }
+
+    // ===================== HELPERS =====================
+    const COLORES_EQUIPO = [
+      { match: ["red bull"],              color: "#3671C6" },
+      { match: ["ferrari"],               color: "#E8002D" },
+      { match: ["mercedes"],              color: "#27F4D2" },
+      { match: ["mclaren", "mc laren"],   color: "#FF8000" },
+      { match: ["aston"],                 color: "#229971" },
+      { match: ["alpine"],                color: "#00A1E8" },
+      { match: ["williams"],              color: "#1868DB" },
+      { match: ["rb", "racing bulls", "visa", "tauri"], color: "#6692FF" },
+      { match: ["sauber", "kick", "stake"], color: "#52E252" },
+      { match: ["haas"],                  color: "#B6BABD" },
+    ];
+    function colorEquipo(nombre) {
+      const n = (nombre || "").toLowerCase();
+      for (const e of COLORES_EQUIPO) {
+        if (e.match.some(m => n.includes(m))) return e.color;
+      }
+      return "#9ca3af";
+    }
+    function esc(txt) {
+      return String(txt ?? "").replace(/[&<>"']/g, c => (
+        { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+      ));
+    }
+    function sello(id, info) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const t = info && info.cache && info.t ? new Date(info.t) : new Date();
+      const h = new Intl.DateTimeFormat("es-ES", { hour: "2-digit", minute: "2-digit", timeZone: ZONA }).format(t);
+      el.textContent = (info && info.cache ? "⚠ En caché · " : "Actualizado ") + h;
+      el.classList.toggle("text-amber-500", !!(info && info.cache));
+    }
+    function fade(el) {
+      if (!el) return;
+      el.classList.remove("fade-in"); void el.offsetWidth; el.classList.add("fade-in");
+    }
+
+    const fmtReloj = new Intl.DateTimeFormat("es-ES", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: ZONA });
+    function reloj() {
+      const el = document.getElementById("clock");
+      if (el) el.textContent = "🕐 " + fmtReloj.format(new Date()) + " " + ZONA_LABEL;
+    }
+
+    const CACHE_PREFIX = "f1cache:";
+    function guardarCache(url, filas) {
+      try { localStorage.setItem(CACHE_PREFIX + url, JSON.stringify({ t: Date.now(), filas })); }
+      catch (e) { /* storage lleno o deshabilitado */ }
+    }
+    function leerCache(url) {
+      try {
+        const raw = localStorage.getItem(CACHE_PREFIX + url);
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) { return null; }
+    }
+    function parseCSV(url, onOk, onErr) {
+      const usarCache = () => {
+        const c = leerCache(url);
+        if (c && Array.isArray(c.filas) && c.filas.length) {
+          onOk(c.filas, { cache: true, t: c.t });
+          return true;
+        }
+        return false;
+      };
+      if (typeof Papa === "undefined") { if (!usarCache() && onErr) onErr(); return; }
+      Papa.parse(url, {
+        download: true, header: true, skipEmptyLines: true,
+        complete: (r) => {
+          const filas = r.data || [];
+          if (filas.length) {
+            guardarCache(url, filas);
+            onOk(filas, { cache: false });
+          } else if (!usarCache()) {
+            onOk(filas, { cache: false });
+          }
+        },
+        error: () => { if (!usarCache() && onErr) onErr(); }
+      });
+    }
+
+    function cargarTemas(onReady) {
+      if (!TEMAS_CSV_URL) { onReady(TEMAS_FALLBACK.slice()); return; }
+      parseCSV(TEMAS_CSV_URL, function (filas) {
+        const temas = (filas || []).map(f => {
+          const v = Object.values(f);
+          return {
+            pais:    (f.pais    ?? v[0] ?? "").toString().trim(),
+            bandera: (f.bandera ?? v[1] ?? "🏁").toString().trim(),
+            color1:  (f.color1  ?? v[2] ?? "").toString().trim(),
+            color2:  (f.color2  ?? v[3] ?? "").toString().trim(),
+          };
+        }).filter(t => t.pais);
+        onReady(temas.length ? temas : TEMAS_FALLBACK.slice());
+      }, function () { onReady(TEMAS_FALLBACK.slice()); });
+    }
+
+    // Lee una columna por nombre normalizado (con alternativas) o, si no, por posición.
+    function fila(f) {
+      const mapa = {};
+      Object.keys(f || {}).forEach(k => { mapa[normalizarPais(k)] = f[k]; });
+      const vals = Object.values(f || {});
+      return (nombres, idx) => {
+        for (const n of nombres) if (mapa[n] !== undefined && mapa[n] !== "") return String(mapa[n]).trim();
+        return idx !== undefined && vals[idx] !== undefined ? String(vals[idx]).trim() : "";
+      };
+    }
+
+    const msg = (t) => `<div class="msg">${esc(t)}</div>`;
+
+    // ===================== A) CIRCUITO =====================
+    const CAMPOS_FICHA = [
+      ["longitud", "Longitud"], ["vueltas", "Vueltas"], ["distancia", "Distancia de carrera"],
+      ["curvas", "Curvas"], ["drs", "Zonas DRS"],
+    ];
+
+    // Convierte filas campo | valor en un objeto con claves normalizadas (sin guiones bajos).
+    function leerCampos(filas) {
+      const o = {};
+      (filas || []).forEach(f => {
+        const v = Object.values(f || {});
+        const k = normalizarPais(v[0]);
+        const val = String(v[1] ?? "").trim();
+        if (k && val) o[k] = val;
+      });
+      return o;
+    }
+
+    function pintarCircuito(c, box) {
+      const hay = Object.keys(c).length > 0;
+      if (!hay) { box.innerHTML = msg("Sin datos en la hoja Circuito"); return; }
+      const titulo = [c.bandera, c.nombre, c.pais && c.nombre ? "· " + c.pais : c.pais].filter(Boolean).join(" ");
+      let rec = "";
+      if (c.record) {
+        const quien = [c.recordpiloto, c.recordanio ? "(" + c.recordanio + ")" : ""].filter(Boolean).join(" ");
+        rec = c.record + (quien ? " · " + quien : "");
+      }
+      const filas = CAMPOS_FICHA.filter(([k]) => c[k]).map(([k, l]) => [l, c[k]]);
+      if (rec) filas.push(["Récord de vuelta", rec]);
+      if (c.ganadoranterior) filas.push(["Ganador anterior", c.ganadoranterior]);
+
+      const ficha = filas.length
+        ? `<dl>${filas.map(([l, v]) => `<div class="ficha-row"><dt>${esc(l)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>`
+        : "";
+
+      const pct = (v) => /^\d+([.,]\d+)?$/.test(v.trim()) ? v.trim() + " %" : v;
+      const clima = [];
+      if (c.tempaire)    clima.push(["🌡️", "Aire", c.tempaire, false]);
+      if (c.temppista)   clima.push(["🛣️", "Pista", c.temppista, false]);
+      if (c.lluvia)      clima.push(["🌧️", "Prob. lluvia", pct(c.lluvia), lluviaAlta(c.lluvia)]);
+      if (c.viento)      clima.push(["💨", "Viento", c.viento, false]);
+      if (c.estadoclima) clima.push(["⛅", "Cielo", c.estadoclima, false]);
+      const climaHtml = clima.length
+        ? `<div class="glass-dark rounded-xl p-4 mt-4">
+            <h3 class="text-lg font-bold uppercase mb-2">Clima previsto</h3>
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">${clima.map(([e, l, v, alta]) =>
+              `<div class="clima-item${alta ? " clima-lluvia" : ""}"><span class="text-2xl" aria-hidden="true">${e}</span><div><div class="v">${esc(v)}</div><div class="l">${esc(l)}</div></div></div>`).join("")}
+            </div></div>`
+        : "";
+
+      box.innerHTML = `
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+          <div>
+            ${titulo ? `<h3 class="text-3xl font-bold mb-2">${esc(titulo)}</h3>` : ""}
+            ${ficha}
+          </div>
+          <div id="trazado-wrap" class="trazado" hidden></div>
+        </div>
+        ${climaHtml}`;
+
+      // Trazado/foto: URL validada y asignada por propiedad DOM (nunca interpolada).
+      const url = urlImagenSegura(c.imagen);
+      const wrap = document.getElementById("trazado-wrap");
+      if (url && wrap) {
+        const img = document.createElement("img");
+        img.loading = "lazy";
+        img.alt = "Trazado del circuito" + (c.nombre ? " " + c.nombre : "");
+        img.onerror = () => { wrap.hidden = true; wrap.remove(); };
+        img.onload = () => { wrap.hidden = false; };
+        img.src = url;
+        wrap.appendChild(img);
+      } else if (wrap) {
+        wrap.remove();
+      }
+    }
+
+    function cargarCircuito() {
+      const box = document.getElementById("circuito-box");
+      if (!CIRCUITO_CSV_URL) { box.innerHTML = msg("Configura la hoja Circuito"); return; }
+      parseCSV(CIRCUITO_CSV_URL, (filas, info) => {
+        try { pintarCircuito(leerCampos(filas), box); }
+        catch (e) { box.innerHTML = msg("Datos de Circuito no válidos"); return; }
+        sello("s-circuito", info);
+        fade(box);
+      }, () => { box.innerHTML = msg("No se pudo cargar la hoja Circuito"); });
+    }
+
+    // ===================== B) ESTADO DE PISTA =====================
+    function pintarEstadoPista(estado, mensaje) {
+      const box = document.getElementById("pista-box");
+      const clave = clasificarEstadoPista(estado);
+      const pulsa = ["amarilla", "roja", "sc", "vsc"].includes(clave) ? " pulsa" : "";
+      box.innerHTML = `<div class="pista-tira pista-${clave}${pulsa}" role="status">
+        <div class="t">${esc(ESTADOS_PISTA[clave].texto)}</div>
+        ${mensaje ? `<div class="m">${esc(mensaje)}</div>` : ""}
+      </div>`;
+      fade(box);
+    }
+
+    function cargarEstadoPista() {
+      const box = document.getElementById("pista-box");
+      if (!ESTADO_PISTA_CSV_URL) { box.innerHTML = msg("Configura la hoja EstadoPista"); return; }
+      parseCSV(ESTADO_PISTA_CSV_URL, (filas, info) => {
+        try {
+          const f = filas[0];
+          if (!f) { pintarEstadoPista("", ""); }
+          else {
+            const g = fila(f);
+            pintarEstadoPista(g(["estado"], 0), g(["mensaje"], 1));
+          }
+        } catch (e) { box.innerHTML = msg("Datos de EstadoPista no válidos"); return; }
+        sello("s-pista", info);
+      }, () => { box.innerHTML = msg("No se pudo cargar la hoja EstadoPista"); });
+    }
+
+    // ===================== C) INTERVALOS =====================
+    function cargarIntervalos() {
+      const box = document.getElementById("int-box");
+      if (!INTERVALOS_CSV_URL) { box.innerHTML = msg("Configura la hoja Intervalos"); return; }
+      parseCSV(INTERVALOS_CSV_URL, (filas, info) => {
+        if (!filas.length) { box.innerHTML = msg("Sin datos en la hoja Intervalos"); return; }
+        try {
+          const items = filas.map((f, i) => {
+            const g = fila(f);
+            return { i, pos: aNumero(g(["pos", "p"], 0)), piloto: g(["piloto", "nombre"], 1),
+                     equipo: g(["equipo"], 2), intervalo: g(["intervalo", "gap"], 3), vueltas: g(["vueltas"], 4) };
+          }).filter(x => x.piloto);
+          items.sort((a, b) => (Number.isFinite(a.pos) ? a.pos : 999) - (Number.isFinite(b.pos) ? b.pos : 999) || a.i - b.i);
+          const top = items.slice(0, 10);
+          if (!top.length) { box.innerHTML = msg("Sin datos en la hoja Intervalos"); return; }
+          box.innerHTML = `<div class="grid gap-1.5">${top.map((x, n) => {
+            const pos = Number.isFinite(x.pos) ? x.pos : n + 1;
+            return `<div class="int-row"><span class="int-pos">${esc(pos)}</span>
+              <span class="team-bar" style="background:${colorEquipo(x.equipo)};min-height:24px"></span>
+              <span class="flex-1 min-w-0"><span class="font-bold truncate block">${esc(x.piloto)}</span>
+                <span class="text-xs text-gray-400 truncate block">${esc(x.equipo)}</span></span>
+              ${x.vueltas ? `<span class="text-xs text-gray-400 whitespace-nowrap">V ${esc(x.vueltas)}</span>` : ""}
+              <span class="int-val">${esc(x.intervalo || "—")}</span></div>`;
+          }).join("")}</div>`;
+        } catch (e) { box.innerHTML = msg("Datos de Intervalos no válidos"); return; }
+        sello("s-int", info);
+        fade(box);
+      }, () => { box.innerHTML = msg("No se pudo cargar la hoja Intervalos"); });
+    }
+
+    // ===================== D) PRÓXIMA SESIÓN =====================
+    let SESIONES = [];
+    let horarioListo = false;
+    let ultimoHtmlProx = "";
+
+    const ETIQUETA_ALERTA = { pista: "EN PISTA", rojo: "En 5 min", ambar: "En 15 min", normal: "Siguiente" };
+
+    function pintarProxima() {
+      if (!horarioListo) return;
+      const box = document.getElementById("prox-box");
+      const ahora = new Date();
+      const idx = indiceProximaSesion(SESIONES, ahora);
+      let html;
+      if (idx < 0) {
+        html = msg("Sin sesiones próximas");
+      } else {
+        const s = SESIONES[idx];
+        const nivel = nivelAlerta(s, ahora);
+        const dia = cap(fmtDia.format(s.fecha));
+        const horas = s.fin ? `${fmtHora.format(s.fecha)} – ${fmtHora.format(s.fin)}` : fmtHora.format(s.fecha);
+        const cd = nivel === "pista" ? "EN PISTA" : formatoCuentaAtras(s.fecha - ahora);
+        const circ = [s.bandera, s.circuito || s.pais].filter(Boolean).join(" ");
+        html = `<div class="prox-card prox-${nivel}">
+          <span class="prox-badge">${esc(ETIQUETA_ALERTA[nivel])}</span>
+          <div class="text-3xl font-bold uppercase f1-head">${esc(s.sesion)}</div>
+          <div class="text-gray-300 font-semibold mt-1">${esc(dia)} · ${esc(horas)}
+            <span class="text-gray-500 text-xs font-normal">(${esc(ZONA_LABEL)})</span></div>
+          ${circ ? `<div class="text-sm text-gray-400 mt-1">${esc(circ)}</div>` : ""}
+          <div class="cd">${esc(cd)}</div>
+        </div>`;
+      }
+      if (html !== ultimoHtmlProx) { box.innerHTML = html; ultimoHtmlProx = html; }
+    }
+
+    function cargarHorario() {
+      const box = document.getElementById("prox-box");
+      if (!SCHEDULE_CSV_URL) { box.innerHTML = msg("Configura la hoja Horario"); return; }
+      parseCSV(SCHEDULE_CSV_URL, (datos, info) => {
+        const carrera = datos.map(f => {
+          const v = Object.values(f);
+          return (f.clave ?? v[0] ?? "").toString().trim().toLowerCase() === "race" ? f : null;
+        }).find(Boolean) || {};
+        SESIONES = datos.map(f => {
+          const v = Object.values(f);
+          const rango = parseRango(f.fecha ?? v[2]);
+          return {
+            clave:    (f.clave  ?? v[0] ?? "").toString().trim().toLowerCase(),
+            sesion:   (f.sesion ?? v[1] ?? "Sesión").toString().trim(),
+            fecha:    rango.inicio,
+            fin:      rango.fin,
+            pais:     (f.pais     || carrera.pais     || "").toString().trim(),
+            bandera:  (f.bandera  || carrera.bandera  || "").toString().trim(),
+            circuito: (f.circuito || carrera.circuito || "").toString().trim(),
+          };
+        }).filter(s => s.fecha);
+        horarioListo = true;
+        ultimoHtmlProx = "";
+        if (!SESIONES.length) { box.innerHTML = msg("Sin sesiones próximas"); }
+        else pintarProxima();
+        sello("s-prox", info);
+      }, () => { box.innerHTML = msg("No se pudo cargar la hoja Horario"); });
+    }
+
+    function cargarTodo() {
+      cargarCircuito();
+      cargarEstadoPista();
+      cargarIntervalos();
+      cargarHorario();
+    }
+
+    // ===================== ARRANQUE =====================
+    function iniciarSecuenciaLuces() {
+      const luces = Array.from(document.querySelectorAll("header nav .start-light"));
+      if (!luces.length) return;
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        luces.forEach(l => l.classList.add("on"));
+        return;
+      }
+      luces.forEach(l => l.classList.remove("on"));
+      let i = 0;
+      function paso() {
+        if (i < luces.length) {
+          luces[i].classList.add("on");
+          i++;
+          setTimeout(paso, 1000);
+        } else {
+          setTimeout(() => {
+            luces.forEach(l => l.classList.remove("on"));
+            i = 0;
+            setTimeout(paso, 1200);
+          }, 1000);
+        }
+      }
+      paso();
+    }
+
+    // Escenas: ids reales de las secciones hijas de <main>.
+    const SCENE_ALIAS = {
+      circuito: "circuito", ficha: "circuito", clima: "circuito", trazado: "circuito", pista: "estado-pista",
+      "estado-pista": "estado-pista", estado: "estado-pista", banderas: "estado-pista", bandera: "estado-pista",
+      intervalos: "intervalos", gaps: "intervalos", top10: "intervalos",
+      "proxima-sesion": "proxima-sesion", proxima: "proxima-sesion", sesion: "proxima-sesion",
+      siguiente: "proxima-sesion", countdown: "proxima-sesion",
+    };
+    const scene = (params.get("scene") || "").toLowerCase().trim();
+    if (scene) {
+      const id = SCENE_ALIAS[scene] || scene;
+      const sec = document.getElementById(id);
+      if (sec && sec.parentElement && sec.parentElement.tagName === "MAIN") {
+        document.body.classList.add("scene");
+        if (params.get("overlay") === "1") sec.classList.remove("glass");
+        sec.classList.add("scene-active");
+      }
+    }
+
+    // Propaga ?overlay, ?scene y ?tema en los enlaces del header.
+    (function propagarFlags() {
+      const p = new URLSearchParams();
+      ["overlay", "scene", "tema"].forEach(k => { if (params.get(k)) p.set(k, params.get(k)); });
+      const q = p.toString();
+      if (!q) return;
+      document.querySelectorAll("header a[href]").forEach(a => {
+        a.setAttribute("href", a.getAttribute("href") + "?" + q);
+      });
+    })();
+
+    aplicarTema(resolverTema(TEMAS_FALLBACK));
+    cargarTemas(lista => aplicarTema(resolverTema(lista)));
+    reloj(); setInterval(reloj, 1000);
+    iniciarSecuenciaLuces();
+    cargarTodo();
+    setInterval(cargarTodo, REFRESH_MS);
+    setInterval(pintarProxima, 1000);
+  </script>
+</body>
+</html>
